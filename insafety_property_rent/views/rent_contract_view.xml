@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="insafety_rent_contract_tree_view_for_property" model="ir.ui.view">
+        <field name="name">insafety.property.rent.contract.tree.for.property</field>
+        <field name="model">insafety.property.rent.contract</field>
+        <field name="arch" type="xml">
+            <list>
+                <button string="Open" icon="fa-external-link" name="open_contract" type="object"/>
+                <field name="tenant_id" widget="many2one_avatar"/>
+                <field name="rent_date_from"/>
+                <field name="rent_date_to"/>
+                <field name="monthly_rent"/>
+                <field name="monthly_extra_costs"/>
+                <field name="monthly_lump_sum_costs"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="insafety_rent_contract_form_view" model="ir.ui.view">
+        <field name="name">insafety.property.rent.contract.form</field>
+        <field name="model">insafety.property.rent.contract</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="property_id"/>
+                            <field name="tenant_id"/>
+                            <field name="name"/>
+                            <field name="rent_date_from"/>
+                            <field name="rent_date_to"/>
+                        </group>
+                        <group>
+                            <field name="monthly_rent"/>
+                            <field name="monthly_extra_costs"/>
+                            <field name="monthly_lump_sum_costs"/>
+                        </group>
+                    </group>
+                    </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_rent_contract" model="ir.actions.act_window">
+        <field name="name">Rent Contracts</field>
+        <field name="res_model">insafety.property.rent.contract</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="insafety_rent_contract_tree_view_for_property"/>
+    </record>
+
+</odoo>

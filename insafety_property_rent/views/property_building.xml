@@ -4,21 +4,21 @@
         <record id="insafety_property_building_view" model="ir.ui.view">
             <field name="name">insafety.property.building</field>
             <field name="model">insafety.property.building</field>
-            <field name="arch" type="xml"> 
+            <field name="arch" type="xml">
                 <form>
-                    <sheet>            
+                    <sheet>
                         <field name="name" placeholder="Building Name"/>
-                        <field name="description" placeholder="Building Description"/>          
-                        
+                        <field name="description" placeholder="Building Description"/>
+
                         <notebook>
                             <page string="Description">
                                 <group>
-                                    
+
                                     <group>
                                         <field name="property_count"/>
                                         <field name="total_area"/>
                                         <field name="total_expense"/>
-                                        <field name="total_income"/> 
+                                        <field name="total_income"/>
                                         <field name="company_id"/>
                                     </group>
                                 </group>
@@ -26,11 +26,10 @@
                             <page string="Units">
                                 <div style="height:5px"/>
                                 <field name="property_ids">
-                                    <tree>
-                                            <button string=" " icon="fa-external-link" name="open_property" type="object"/>
-                                            <field name="name" readonly="1"/>
-                                            <field name="status" readonly="1"/>
-                                    </tree>
+                                    <!-- <views> -->
+                                       <list string="Properties" ref="insafety_property_tree_view"/>
+                                       <form string="Property Form" ref="insafety_property_form_view"/>
+                                    <!-- </views> -->
                                 </field>
                             </page>
                             <page string="Accounts">
@@ -39,7 +38,7 @@
                                         <field name="account_receivable_id" />
                                         <field name="tax_ids" widget="many2many_tags" />
                                         <field name="invoice_payment_term_id" />
-                                        <field name="qr_code_method" />                       
+                                        <field name="qr_code_method" />
                                     </group>
                                     <group>
                                         <field name="cost_billing_receivable_id" />
@@ -53,102 +52,61 @@
                                 <div style="height:5px"/>
                                 <div>Accounts to Distribute Costs</div>
                                 <field name="account_ids">
-                                    <tree>
-                                        <field name="code" />
-                                        <field name="name" />
-                                        <field name="account_type" />
-                                        <field name="current_balance" />
-                                    </tree>
+                                    <!-- <views> -->
+                                        <list string="Accounts" ref="account.view_account_tree"/>
+                                        <form string="Account Form" ref="account.view_account_form"/>
+                                    <!-- </views> -->
                                 </field>
                                 <div style="height:5px"/>
                                 <div>Analytic Accounts</div>
                                 <field name="analytic_account_ids">
-                                    <tree>
-                                        <field name="name"/>
-                                        <field name="plan_id"/>
-                                        <field name="debit"/>
-                                        <field name="credit"/>
-                                        <field name="balance"/>
-                                    </tree>
+                                    <!-- <views> -->
+                                        <list string="Analytic Accounts" ref="account.view_analytic_account_list"/>
+                                        <form string="Analytic Account Form" ref="account.view_analytic_account_form"/>
+                                    <!-- </views> -->
                                 </field>
                             </page>
                             <page string="Additional Costs Billing">
-                                <group>    
+                                <group>
                                     <group>
-                                        <field name="account_expense_ids">
-                                            <tree 
-                                            create="0"
-                                            editable="bottom"
-                                            delete="0">
-                                                <field name="code" readonly="1"/>
-                                                <field name="name" readonly="1"/>
-                                                <field name="current_balance" sum="Total" />
-                                            </tree>
+                                        <field name="account_expense_ids" widget="one2many_list">
+                                            <!-- <views> -->
+                                                <list string="Expense Accounts" ref="account.view_account_tree"/>
+                                            <!-- </views> -->
                                         </field>
                                         <field name="total_vacant_cost"/>
-                                    </group>            
-                                    <group>             
+                                    </group>
+                                    <group>
                                         <field name="billing_period_from"/>
-                                        <field name="billing_period_to"/>    
+                                        <field name="billing_period_to"/>
                                         <field name="administrative_expenses" />
-                                        <field name="distribute_by" /> 
+                                        <field name="distribute_by" />
                                         <field name="cost_billing_direct_post"/>
                                     </group>
                                     <div>
                                         <button name="calculate" class="btn-primary"
-                                                type="object"  string="Calculate"/> 
+                                                type="object"  string="Calculate"/>
                                         <span> </span>
                                         <button name="create_invoice" class="btn-primary"
                                                 type="object"  string="Create Invoices"/>
                                     </div>
                                     <div style="height:50px"/>
-                                    <field name="rent_contract_ids">
-                                        <tree 
-                                        create="0"
-                                        editable="bottom"
-                                        delete="0"
-                                        default_order="property_id, rent_date_from">
-                                            <field name="property_id" readonly="1" />
-                                            <field name="name" readonly="1"/>
-                                            <field name="rent_date_from" readonly="1"/>
-                                            <field name="rent_date_to" readonly="1"/>
-                                            <field name="rent_days" />
-                                            <field name="rent_month" />
-                                            <field name="distribution_key" />
-                                            <field name="next_cost_billing" sum="Total" />
-                                            <field name="administrative_expenses" sum="Total" />
-                                            <field name="monthly_extra_costs_paid_calc" sum="Total"/>
-                                            <field name="cost_billing_total" sum="Total" />
-                                        </tree>
+                                    <field name="rent_contract_ids" widget="one2many_list">
+                                        <!-- <views> -->
+                                            <list string="Rent Contracts" ref="insafety_property_rent_contract_tree_view"/>
+<!--                                            <form string="Rent Contract Form" ref="insafety_rent_contract_form_view"/>-->
+                                        <!-- </views> -->
                                      </field>
-                                    
+
                                 </group>
                             </page>
-                            <!-- <page string="Documents">
-                                <br/>
-                                 <h3>Documents</h3>
-                                <br/>
-                                <group>
-                                    <field name="document" filename="document_name"/>
-                                    <field name="document_name" invisible="1"/>
-                                </group>
-                            </page>
-                            <page string="Notes">
-                                <br/>
-                                 <h3>Notes</h3>
-                                <br/>
-                                <group>
-                                    <field name="notes" />
-                                    
-                                </group>
-                            </page> -->
                         </notebook>
                     </sheet>
                     <div class="oe_chatter">
                         <field name="message_follower_ids" widget="mail_followers"/>
                         <field name="message_ids" widget="mail_thread"/>
                     </div>
-                </form>                                     
+                </form>
             </field>
         </record>
 
@@ -156,22 +114,22 @@
             <field name="name">insafety.property.building.tree</field>
             <field name="model">insafety.property.building</field>
             <field name="arch" type="xml">
-                <tree>
-                    <field name="name"/>    
+                <list>
+                    <field name="name"/>
                     <field name="description"/>
-                </tree>
+                </list>
             </field>
         </record>
 
         <record id="action_property_building" model="ir.actions.act_window">
             <field name="name">Property Building</field>
             <field name="res_model">insafety.property.building</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">
                     Create a Property to Advertise
                 </p>
             </field>
-        </record>   
+        </record>
     </data>
 </odoo>

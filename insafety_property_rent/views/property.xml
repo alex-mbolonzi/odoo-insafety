@@ -5,13 +5,13 @@
             <field name="name">insafety.property.tree</field>
             <field name="model">insafety.property</field>
             <field name="arch" type="xml">
-                <tree decoration-success="status == 'rented'" decoration-danger="status == 'canceled'">
+                <list decoration-success="status == 'rented'" decoration-danger="status == 'canceled'">
                     <field name="name"/>
                     <field name="description" />
                     <field name="status"/>
                     <field name="type_id"/>
-                    <field name="id" invisible="1"/>             
-                </tree>
+                    <field name="id" invisible="1"/>
+                </list>
             </field>
         </record>
 
@@ -139,17 +139,26 @@
                                 </group>      
                                </group>                            
                             </page>
+<!--                             <page string="Rent Contracts">-->
+<!--                                <div style="height:5px"/>-->
+<!--                                <field name="rent_contract_ids">-->
+<!--                                    &lt;!&ndash; <views> &ndash;&gt;-->
+<!--                                        <list string="Rent Contracts" ref="insafety_property_rent_contract_tree_view"/>-->
+<!--                                        <form string="Rent Contract Form" ref="property_rent_contract_view"/>-->
+<!--                                    &lt;!&ndash; </views> &ndash;&gt;-->
+<!--                                </field>-->
+<!--                            </page>-->
                             <page string="Rent Contracts">
                                 <div style="height:5px"/>
                                 <field name="rent_contract_ids">
-                                    <tree>  
-                                        <button string=" " icon="fa-external-link" name="open_contract" type="object"/> 
-                                        <field name="tenant_id" widget="many2one_avatar"/> 
+                                    <tree>
+                                        <field name="tenant_id" widget="many2one_avatar"/>
                                         <field name="rent_date_from"/>
                                         <field name="rent_date_to"/>
                                         <field name="monthly_rent"/>
                                         <field name="monthly_extra_costs"/>
                                         <field name="monthly_lump_sum_costs"/>
+                                        <button string="Open Contract" icon="fa-external-link" name="open_contract" type="object"/>
                                     </tree>
                                 </field>
                             </page>
@@ -167,7 +176,7 @@
             <field name="name">Property</field>
             <field name="res_model">insafety.property</field>
             <!-- <field name="view_mode">tree,pivot,graph,form,kanban</field> -->
-            <field name="view_mode">tree,pivot,graph,form</field>
+            <field name="view_mode">list,pivot,graph,form</field>
             <field name="view_id" ref="insafety_property_tree_view"/>
             <field name="context">{'group_by':['building_id']}</field>
             <field name="help" type="html">
@@ -183,7 +192,7 @@
         <record id="action_account_form" model="ir.actions.act_window">
             <field name="name">Chart of Accounts to Distribute Costs</field>
             <field name="res_model">account.account</field>
-            <field name="view_mode">tree,kanban,form</field>
+            <field name="view_mode">list,kanban,form</field>
             <field name="view_id" ref="account.view_account_list"/>
             <field name="context">{'group_by':['building_id']}</field>
         </record>

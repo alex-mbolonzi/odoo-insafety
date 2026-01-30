@@ -19,4 +19,15 @@
             </xpath>            
         </field>    -->
     </record>
+
+    <record id="insafety_account_account_expense_tree_view" model="ir.ui.view">
+        <field name="name">insafety.account.account.expense.tree</field>
+        <field name="model">account.account</field>
+        <field name="arch" type="xml">
+            <list create="0" delete="0"> <field name="code" />
+                <field name="name" />
+                <field name="current_balance" sum="Total" />
+                </list>
+        </field>
+    </record>
 </odoo>

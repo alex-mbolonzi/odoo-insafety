@@ -44,18 +44,19 @@
             <field name="name">insafety.property.rent.contract</field>
             <field name="model">insafety.property.rent.contract</field>
             <field name="arch" type="xml">
-                <tree>
+                <list>
+<!--                    <button string="Open Contract" icon="fa-external-link" name="open_contract" type="object"/>-->
                     <field name="tenant_id"/>
                     <field name="building_id"/>
                     <field name="property_id"/>         
-                </tree>
+                </list>
             </field>
         </record>
 
         <record id="action_property_rent_contract" model="ir.actions.act_window">
             <field name="name">Rent Contract</field>
             <field name="res_model">insafety.property.rent.contract</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="view_id" ref="insafety_property_rent_contract_tree_view"/>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">

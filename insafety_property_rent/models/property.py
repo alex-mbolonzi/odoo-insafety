@@ -52,15 +52,11 @@ class Property(models.Model):
     def _compute_current_tenant(self):
         for rec in self:
             c = False
-            t =  datetime.date(datetime.today())    
+            t = datetime.today().date()
             for contract in rec.rent_contract_ids:
-                if contract.rent_date_from < t:
-                    if contract.rent_date_to == False:
-                        c = contract.tenant_id 
-                else:
-                    if contract.rent_date_to:
-                        if contract.rent_date_to >= t:
-                            c = contract.tenant_id 
+                if contract.rent_date_from <= t:
+                    if not contract.rent_date_to or contract.rent_date_to >= t:
+                        c = contract.tenant_id
             rec.current_rent_contract_id = c
     
 
@@ -127,5 +123,15 @@ class Property(models.Model):
             'target': 'current',
             'res_id': self.building_id.id, 
         }
-       
-    
+
+    # def open_rent_contract(self):
+    #     self.ensure_one()
+    #     return {
+    #         'type': 'ir.actions.act_window',
+    #         'name': 'Rent Contracts',
+    #         'view_mode': 'tree,form',
+    #         'res_model': 'insafety.property.rent.contract',
+    #         'domain': [('property_id', '=', self.id)],
+    #         'context': {'default_property_id': self.id},
+    #         'target': 'current',
+    #     }
