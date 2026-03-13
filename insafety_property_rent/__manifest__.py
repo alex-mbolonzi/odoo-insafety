@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 {
-    'name': "Insafety Property Rent",
+    'name': "Bomatech",
 
     'summary': """
         Deals with the accounting aspects of property rentals""",

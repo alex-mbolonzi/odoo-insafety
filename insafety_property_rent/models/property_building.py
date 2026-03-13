@@ -90,20 +90,24 @@ class Property(models.Model):
     
     def _compute_total_expense(self):
         for rec in self:
-            total = 0
-            for acc in rec.account_expense_ids:
-                total += acc.current_balance
-            rec.total_expense = total
+            domain = [
+                ('account_id', 'in', rec.account_expense_ids.ids),
+                ('date', '>=', rec.billing_period_from),
+                ('date', '<=', rec.billing_period_to),
+                ('move_id.state', '=', 'posted'),
+                ('company_id', '=', rec.company_id.id)
+            ]
+            result = self.env['account.move.line'].read_group(domain, ['balance'], [])
+            rec.total_expense = result[0]['balance'] if result else 0.0
 
     def _compute_total_income(self):
         for rec in self:
             total = 0
             # for acc in rec.account_income_ids:
             #     total += acc.current_balance
-            for acc in rec.rent_contract_ids.account_receivable_id:
-                total += acc.current_balance
+            for contract in rec.rent_contract_ids:
+                total += contract.monthly_rent
             rec.total_income = total
-    
 
     def _compute_total_area(self):
         for rec in self:
@@ -134,9 +138,8 @@ class Property(models.Model):
             analyticAccounts[str(a.id)] = 100
         
 
-
         for contract in contracts:
-            if contract.cost_billing_total != 0:
+            if True: # contract.cost_billing_total != 0:
                 move_type = 'out_invoice'
                 cost_billing_total = contract.cost_billing_total
                 if contract.cost_billing_total < 0:
@@ -144,15 +147,16 @@ class Property(models.Model):
                     cost_billing_total =  0 - contract.cost_billing_total
                 locale.setlocale(locale.LC_ALL, contract.tenant_id.lang + '.UTF-8')
                 total_expense = building.total_expense
-                fraction_expense = total_expense / 365 * contract.rent_days / contract.distribution_base * contract.distribution_key
-                fraction_text = f"{_('Distribution')}: {building.distribute_by} {contract.distribution_base}/{contract.distribution_key} "
+                distribution_base = contract.distribution_base if contract.distribution_base != 0 else 1.0
+                fraction_expense = total_expense / 365 * contract.rent_days / distribution_base * contract.distribution_key
+                fraction_text = f"{_('Distribution')}: {building.distribute_by} {distribution_base}/{contract.distribution_key} "
                 if contract.rent_days != 365:
                         fraction_text += f"365/{contract.rent_days}"
-                administrative_expenses = fraction_expense  * building.administrative_expenses / 100
+                administrative_expenses = fraction_expense * building.administrative_expenses / 100
                 invoice = self.env['account.move'].create([
                             {
                                 'move_type': move_type, 
-                                'partner_id': contract.tenant_id.id,
+                                'partner_id': contract.tenant_id.building_id.id, #contract.tenant_id.id,
                                 'invoice_date': time.strftime('%Y-%m-01'),
                                 'invoice_payment_term_id': building.cost_billing_payment_term_id.id,
                                 'qr_code_method': building.cost_billing_qr_code_method,
@@ -180,8 +184,9 @@ class Property(models.Model):
                 cur = self.env.company.currency_id.display_name
 
                 total_expense = building.total_expense
-                fraction_expense = total_expense / 365 * contract.rent_days / contract.distribution_base * contract.distribution_key
-                fraction_text = f"{_('share calc')}: {building.distribute_by} {contract.distribution_base}/{contract.distribution_key} "
+                # distribution_base = contract.distribution_base if contract.distribution_base != 0 else 1.0
+                fraction_expense = total_expense / 365 * contract.rent_days / distribution_base * contract.distribution_key
+                fraction_text = f"{_('share calc')}: {building.distribute_by} {distribution_base}/{contract.distribution_key} "
                 if contract.rent_days != 365:
                         fraction_text += f"365/{contract.rent_days}"
                 administrative_expenses = fraction_expense  * building.administrative_expenses / 100
@@ -312,9 +317,3 @@ class Property(models.Model):
                 'view_mode': "form",
                 'type': "ir.actions.act_window"
             }
-
-
-
-
-        
-    

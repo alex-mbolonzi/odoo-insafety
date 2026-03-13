@@ -67,7 +67,7 @@ class PropertyTag(models.Model):
             rec.invoice_payment_term_id = rec.building_id.invoice_payment_term_id
             rec.qr_code_method = rec.building_id.qr_code_method
 
-    #@api.depends('building_id.administrative_expenses','building_id.distribute_by','distribution_base','building_id.billing_period_from','building_id.billing_period_to')
+    @api.depends('building_id.total_expense','distribution_base','distribution_key','rent_days')
     def calc_next_cost_billing(self):
         for rec in self:
             distribution_base = 1
@@ -76,7 +76,7 @@ class PropertyTag(models.Model):
             rec.next_cost_billing = rec.building_id.total_expense / distribution_base * rec.distribution_key / 365 * rec.rent_days
 
 
-    #@api.depends('building_id.administrative_expenses','building_id.distribute_by','building_id.billing_period_from','building_id.billing_period_to')
+    @api.depends('next_cost_billing','administrative_expenses','monthly_extra_costs_paid_calc')
     def _cal_cost_billing_total(self):
         for rec in self:
             rec.cost_billing_total = rec.next_cost_billing + rec.administrative_expenses - rec.monthly_extra_costs_paid_calc
@@ -86,7 +86,7 @@ class PropertyTag(models.Model):
         for rec in self:
             rec.administrative_expenses = rec.next_cost_billing * rec.building_id.administrative_expenses / 100
   
-    #@api.depends('building_id.billing_period_from','building_id.billing_period_to')
+    @api.depends('building_id.billing_period_from','building_id.billing_period_to', 'rent_date_from', 'rent_date_to')
     def _cal_rent_days(self):
         for rec in self:
             if rec.building_id.billing_period_from and rec.building_id.billing_period_to:
@@ -212,33 +212,41 @@ class PropertyTag(models.Model):
         for a in contract.building_id.analytic_account_ids:
             analyticAccounts[str(a.id)] = 100
 
-        invoice = self.env['account.move'].create([
-            {
-                'move_type': 'out_invoice', 
-                'partner_id': contract.tenant_id.id,
-                'invoice_date': time.strftime('%Y-%m-01'),
-                'invoice_payment_term_id': contract.invoice_payment_term_id.id,
-                'qr_code_method': contract.qr_code_method,
-                'invoice_line_ids': [(0, 0, {'price_unit': contract.monthly_rent, 
-                                            'account_id': contract.account_receivable_id.id, 
-                                            'tax_ids': contract.tax_ids,
-                                            'name': _('Monthly Rent'),
-                                            'analytic_distribution': analyticAccounts}),
-                                    (0, 0, {'price_unit':
-                                            contract.monthly_lump_sum_costs, 
-                                            'account_id': contract.building_id.cost_billing_receivable_id.id, 
-                                            'tax_ids': contract.building_id.cost_billing_tax_ids,
-                                            'name': _('Monthly Lump Sum Costs'),
-                                            'analytic_distribution': analyticAccounts}),
-                                    (0, 0, {'price_unit':  
-                                            contract.monthly_extra_costs, 
-                                            'account_id': contract.building_id.cost_billing_receivable_id.id, 
-                                            'tax_ids': contract.building_id.cost_billing_tax_ids,
-                                            'name': _('Monthly Extra Costs'),
-                                            'analytic_distribution': analyticAccounts})                                 
-                                    ],
-            },
-        ])
+            # FIXED: Removed the outer square brackets
+        invoice = self.env['account.move'].create({
+            'move_type': 'out_invoice',
+            'partner_id': contract.tenant_id.id,
+            'invoice_date': time.strftime('%Y-%m-01'),
+            'invoice_payment_term_id': contract.invoice_payment_term_id.id,
+            'qr_code_method': contract.qr_code_method,
+            'journal_id': self.env['account.journal'].search([('type', '=', 'sale'), ('company_id', '=', contract.company_id.id)], limit=1).id,
+            'invoice_line_ids': [
+                (0, 0, {
+                    'price_unit': contract.monthly_rent,
+                    'account_id': contract.account_receivable_id.id,
+                    'tax_ids': [(6, 0, contract.tax_ids.ids)],
+                    'name': _('Monthly Rent'),
+                    'analytic_distribution': analyticAccounts,
+                    'quantity': 1.0,
+                }),
+                (0, 0, {
+                    'price_unit': contract.monthly_lump_sum_costs,
+                    'account_id': contract.building_id.cost_billing_receivable_id.id,
+                    'tax_ids': [(6, 0, contract.building_id.cost_billing_tax_ids.ids)],
+                    'name': _('Monthly Lump Sum Costs'),
+                    'analytic_distribution': analyticAccounts,
+                    'quantity': 1.0,
+                }),
+                (0, 0, {
+                    'price_unit': contract.monthly_extra_costs,
+                    'account_id': contract.building_id.cost_billing_receivable_id.id,
+                    'tax_ids': [(6, 0, contract.building_id.cost_billing_tax_ids.ids)],
+                    'name': _('Monthly Extra Costs'),
+                    'analytic_distribution': analyticAccounts,
+                    'quantity': 1.0,
+                })
+            ],
+        })
 
         if contract.rent_direct_post:
             invoice.action_post()
@@ -277,7 +285,7 @@ class PropertyTag(models.Model):
         '''
         invoice.narration = text
             
-    #@api.depends('building_id.distribute_by')
+    @api.depends('building_id.distribute_by', 'property_id.total_rooms', 'property_id.living_area', 'property_id.volume', 'property_id.cost_factor_custom', 'building_id.total_rooms', 'building_id.total_area', 'building_id.total_volume', 'building_id.total_cost_factor_custom', 'building_id.property_count')
     def _cal_distribution_key(self):
         for rec in self:
             dist = 1
@@ -300,5 +308,3 @@ class PropertyTag(models.Model):
             
             rec.distribution_key = dist
             rec.distribution_base = base
-
-    
