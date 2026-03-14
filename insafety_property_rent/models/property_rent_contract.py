@@ -6,7 +6,7 @@ from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 from odoo import _
 
-class PropertyTag(models.Model):
+class PropertyRentContract(models.Model):
     _inherit = "mail.thread"
     _name = 'insafety.property.rent.contract'
     _description = 'Property Rent Contracts'
