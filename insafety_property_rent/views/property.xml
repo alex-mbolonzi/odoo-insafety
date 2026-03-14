@@ -152,7 +152,7 @@
                                 <div style="height:5px"/>
                                 <field name="rent_contract_ids">
                                     <tree>
-                                        <field name="tenant_id" widget="many2one_avatar"/>
+<!--                                        <field name="tenant_id" widget="many2one_avatar"/>-->
                                         <field name="rent_date_from"/>
                                         <field name="rent_date_to"/>
                                         <field name="monthly_rent"/>         
