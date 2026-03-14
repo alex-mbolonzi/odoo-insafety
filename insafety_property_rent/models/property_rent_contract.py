@@ -21,7 +21,7 @@ class PropertyRentContract(models.Model):
     rent_date_from = fields.Date(string="Rent From", required=True, tracking=True)
     rent_date_to = fields.Date(string="Rent To", tracking=True)
     monthly_rent = fields.Float(string="Monthly Rent", required=True, tracking=True)
-    monthly_extra_costs = fields.Float(string="Monthly Extra Costs", required=True, tracking=True)
+    monthly_extra_costs = fields.Float(string="Monthly Garbage Fee", required=True, tracking=True)
     monthly_lump_sum_costs = fields.Float(string="Monthly Lump Sum Costs", required=True, tracking=True)
 
     rent_days = fields.Integer(string="Rent Days", compute="_cal_rent_days")
@@ -241,7 +241,7 @@ class PropertyRentContract(models.Model):
                     'price_unit': contract.monthly_extra_costs,
                     'account_id': contract.building_id.cost_billing_receivable_id.id,
                     'tax_ids': [(6, 0, contract.building_id.cost_billing_tax_ids.ids)],
-                    'name': _('Monthly Extra Costs'),
+                    'name': _('Monthly Garbage Fee'),
                     'analytic_distribution': analyticAccounts,
                     'quantity': 1.0,
                 })
@@ -274,7 +274,7 @@ class PropertyRentContract(models.Model):
                     <td>{_('Monthly Rent')} </td><td style="text-align:right"> {cur} {format(contract.monthly_rent, ".2f")  }</td>
                 </tr>
                 <tr>
-                    <td>{_('Monthly Extra Costs')} </td><td style="text-align:right"> {cur} {format(contract.monthly_extra_costs, ".2f")  }</td>
+                    <td>{_('Monthly Garbage Fee')} </td><td style="text-align:right"> {cur} {format(contract.monthly_extra_costs, ".2f")  }</td>
                 </tr>
                 <tr>
                     <td>{_('Monthly Lump Sum Costs')} 

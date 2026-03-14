@@ -535,12 +535,12 @@ msgid "Month"
 msgstr "Monat"
 
 #. module: insafety_property_rent
-#. odoo-python
+. odoo-python
 #: code:addons/insafety_property_rent/models/property_rent_contract.py:0
 #: model:ir.model.fields,field_description:insafety_property_rent.field_insafety_property_rent_contract__monthly_extra_costs
 #, python-format
-msgid "Monthly Extra Costs"
-msgstr "Nebenkosten"
+msgid "Monthly Garbage Fee"
+msgstr "Monatliche Müllgebühr"
 
 #. module: insafety_property_rent
 #. odoo-python

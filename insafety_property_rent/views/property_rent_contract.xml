@@ -15,7 +15,7 @@
                                 <field name="rent_date_from"/>
                                 <field name="rent_date_to"/>
                                 <field name="monthly_rent"/>
-                                <field name="monthly_extra_costs"/>
+                                <field name="monthly_extra_costs" string="Monthly Garbage Fee"/>
                                 <field name="monthly_lump_sum_costs"/>
                                 <field name="company_id" />
                             </group> 
