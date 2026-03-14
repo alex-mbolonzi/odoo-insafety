@@ -139,29 +139,20 @@
                                 </group>      
                                </group>                            
                             </page>
-<!--                             <page string="Rent Contracts">
-                                <div style="height:5px"/>
-                                <field name="rent_contract_ids">-->
-                                    <!-- <views>
-                                        <list string="Rent Contracts" ref="insafety_property_rent_contract_tree_view"/>
-                                        <form string="Rent Contract Form" ref="property_rent_contract_view"/>
-                                     </views>
-                                </field>
-                            </page>-->
-                            <page string="Rent Contracts">
-                                <div style="height:5px"/>
-                                <field name="rent_contract_ids">
-                                    <tree>
-                                        <field name="tenant_id" widget="many2one_avatar"/>
-                                        <field name="rent_date_from"/>
-                                        <field name="rent_date_to"/>
-                                        <field name="monthly_rent"/>         
-                                        <field name="monthly_extra_costs"/>
-                                        <field name="monthly_lump_sum_costs"/>
-                                        <button string="Open Contract" icon="fa-external-link" name="open_contract" type="object"/>
-                                    </tree>
-                                </field>
-                            </page>
+<!--                            <page string="Rent Contracts">-->
+<!--                                <div style="height:5px"/>-->
+<!--                                <field name="rent_contract_ids">-->
+<!--                                    <list>-->
+<!--                                        <field name="tenant_id" widget="many2one_avatar"/>-->
+<!--                                        <field name="rent_date_from"/>-->
+<!--                                        <field name="rent_date_to"/>-->
+<!--                                        <field name="monthly_rent"/>         -->
+<!--                                        <field name="monthly_extra_costs"/>-->
+<!--                                        <field name="monthly_lump_sum_costs"/>-->
+<!--                                        <button string="Open Contract" icon="fa-external-link" name="open_contract" type="object"/>-->
+<!--                                    </list>-->
+<!--                                </field>-->
+<!--                            </page>-->
                         </notebook>       
                     </sheet>
                     <div class="oe_chatter">
