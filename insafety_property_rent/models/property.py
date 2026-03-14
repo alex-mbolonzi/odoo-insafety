@@ -69,6 +69,11 @@ class Property(models.Model):
                 rec.status = 'free'
 
 
+    
+    
+    
+            
+
     @api.onchange('garden')
     def _change_garden(self):
         if self.garden ==  False:

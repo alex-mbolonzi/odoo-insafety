@@ -132,11 +132,13 @@ class Property(models.Model):
         self = self.with_company(self.company_id)
         building = self
         contracts = self.rent_contract_ids
+        partner = self.env['res.partner'].search([('name', '=', building.name)], limit=1)
 
         analyticAccounts = {}
         for a in building.analytic_account_ids:
             analyticAccounts[str(a.id)] = 100
         
+
 
         for contract in contracts:
             if True: # contract.cost_billing_total != 0:
@@ -156,7 +158,7 @@ class Property(models.Model):
                 invoice = self.env['account.move'].create([
                             {
                                 'move_type': move_type, 
-                                'partner_id': contract.tenant_id.building_id.id, #contract.tenant_id.id,
+                                'partner_id': partner.id if partner else contract.tenant_id.id,
                                 'invoice_date': time.strftime('%Y-%m-01'),
                                 'invoice_payment_term_id': building.cost_billing_payment_term_id.id,
                                 'qr_code_method': building.cost_billing_qr_code_method,
