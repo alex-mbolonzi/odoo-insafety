@@ -89,7 +89,7 @@
                                         <span> </span>
                                         <button name="create_invoice" class="btn-primary"
                                                 type="object"  string="Create Invoices"/>
-                                        <span></span>
+                                        <span> </span>
                                         <button name="generate_monthly_statement"
                                                 string="Generate Monthly Statement"
                                                 type="object" class="btn-primary"/>
