@@ -89,6 +89,10 @@
                                         <span> </span>
                                         <button name="create_invoice" class="btn-primary"
                                                 type="object"  string="Create Invoices"/>
+                                        <span></span>
+                                        <button name="generate_monthly_statement"
+                                                string="Generate Monthly Statement"
+                                                type="object" class="btn-primary"/>
                                     </div>
                                     <div style="height:50px"/>
                                     <field name="rent_contract_ids" widget="one2many_list">
