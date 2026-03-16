@@ -229,19 +229,19 @@ class PropertyRentContract(models.Model):
                     'analytic_distribution': analyticAccounts,
                     'quantity': 1.0,
                 }),
-                (0, 0, {
-                    'price_unit': contract.monthly_lump_sum_costs,
-                    'account_id': contract.building_id.cost_billing_receivable_id.id,
-                    'tax_ids': [(6, 0, contract.building_id.cost_billing_tax_ids.ids)],
-                    'name': _('Monthly Lump Sum Costs'),
-                    'analytic_distribution': analyticAccounts,
-                    'quantity': 1.0,
-                }),
+                # (0, 0, {
+                #     'price_unit': contract.monthly_lump_sum_costs,
+                #     'account_id': contract.building_id.cost_billing_receivable_id.id,
+                #     'tax_ids': [(6, 0, contract.building_id.cost_billing_tax_ids.ids)],
+                #     'name': _('Monthly Lump Sum Costs'),
+                #     'analytic_distribution': analyticAccounts,
+                #     'quantity': 1.0,
+                # }),
                 (0, 0, {
                     'price_unit': contract.monthly_extra_costs,
                     'account_id': contract.building_id.cost_billing_receivable_id.id,
                     'tax_ids': [(6, 0, contract.building_id.cost_billing_tax_ids.ids)],
-                    'name': _('Monthly Garbage Fee'),
+                    'name': _('[GRB_SRV] Garbage Collection'),
                     'analytic_distribution': analyticAccounts,
                     'quantity': 1.0,
                 })
@@ -276,11 +276,11 @@ class PropertyRentContract(models.Model):
                 <tr>
                     <td>{_('Monthly Garbage Fee')} </td><td style="text-align:right"> {cur} {format(contract.monthly_extra_costs, ".2f")  }</td>
                 </tr>
-                <tr>
-                    <td>{_('Monthly Lump Sum Costs')} 
-                    
-                    </td><td style="text-align:right"> {cur} {format(contract.monthly_lump_sum_costs, ".2f")  }</td>
-                </tr>
+                # <tr>
+                #     <td>{_('Monthly Lump Sum Costs')} 
+                #     
+                #     </td><td style="text-align:right"> {cur} {format(contract.monthly_lump_sum_costs, ".2f")  }</td>
+                # </tr>
             </table>
         '''
         invoice.narration = text

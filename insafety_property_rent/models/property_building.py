@@ -1,5 +1,7 @@
 import time 
 import locale
+import base64
+from datetime import timedelta
 from odoo import _
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
@@ -319,3 +321,36 @@ class Property(models.Model):
                 'view_mode': "form",
                 'type': "ir.actions.act_window"
             }
+
+    def generate_monthly_statement(self):
+        for rec in self:
+            today = fields.Date.today()
+            start_date = today.replace(day=1)
+            # Logic to get end of month
+            if start_date.month == 12:
+                next_month = start_date.replace(year=start_date.year + 1, month=1, day=1)
+            else:
+                next_month = start_date.replace(month=start_date.month + 1, day=1)
+            end_date = next_month - timedelta(days=1)
+
+            lines = []
+            lines.append(f"Monthly Statement: {rec.name}")
+            lines.append(f"Period: {start_date} - {end_date}")
+            lines.append("")
+            
+            for property in rec.property_ids:
+                tenants = []
+                for contract in property.rent_contract_ids:
+                    # Check for overlap
+                    c_start = contract.rent_date_from
+                    c_end = contract.rent_date_to
+                    
+                    if c_start <= end_date and (not c_end or c_end >= start_date):
+                         tenants.append(contract.tenant_id.name)
+                
+                status = ", ".join(tenants) if tenants else "Vacant"
+                lines.append(f"{property.name}: {status}")
+            
+            content = "\n".join(lines)
+            rec.document = base64.b64encode(content.encode('utf-8'))
+            rec.document_name = f"Monthly_Statement_{start_date.strftime('%Y-%m')}.txt"
