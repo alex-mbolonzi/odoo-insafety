@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <report id="action_report_landlord_statement"
+            string="Landlord Statement"
+            model="insafety.landlord.statement.wizard"
+            report_type="qweb-pdf"
+            file="insafety_property_rent.report_landlord_statement"
+            name="insafety_property_rent.report_landlord_statement"
+    />
+</odoo>

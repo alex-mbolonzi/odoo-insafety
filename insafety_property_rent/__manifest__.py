@@ -31,6 +31,8 @@
         'views/property_analytics.xml',
         'views/menu_items.xml',
         'data/ir_cron_data.xml',
+        'wizard/landlord_statement_wizard_view.xml',
+        'report/landlord_statement_report.xml',
     ],
 
     'demo': [

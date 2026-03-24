@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_landlord_statement_wizard_form" model="ir.ui.view">
+        <field name="name">insafety.landlord.statement.wizard.form</field>
+        <field name="model">insafety.landlord.statement.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Landlord Statement">
+                <group>
+                    <field name="building_id"/>
+                </group>
+                <footer>
+                    <button name="print_report" string="Print" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_landlord_statement_wizard" model="ir.actions.act_window">
+        <field name="name">Landlord Statement</field>
+        <field name="res_model">insafety.landlord.statement.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_landlord_statement"
+              name="Landlord Statement"
+              parent="insafety_property_rent.menu_property_ads_settings"
+              action="action_landlord_statement_wizard"
+              sequence="10"/>
+</odoo>
