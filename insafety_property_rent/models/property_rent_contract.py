@@ -239,7 +239,7 @@ class PropertyRentContract(models.Model):
                 # }),
                 (0, 0, {
                     'price_unit': contract.monthly_extra_costs,
-                    'account_id': contract.building_id.garbage_collection_income_account_id.id or contract.building_id.cost_billing_receivable_id.id,
+                    'account_id': contract.building_id.garbage_collection_income_account_id.id,
                     'tax_ids': [(6, 0, contract.building_id.cost_billing_tax_ids.ids)],
                     'name': _('[GRB_SRV] Garbage Collection'),
                     'analytic_distribution': analyticAccounts,
