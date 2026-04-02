@@ -142,10 +142,8 @@
                              <page string="Rent Contracts">
                                 <div style="height:5px"/>
                                 <field name="rent_contract_ids">
-                                    <views>
-                                        <tree string="Rent Contracts" ref="insafety_property_rent_contract_tree_view"/>
-                                        <form string="Rent Contract Form" ref="property_rent_contract_view"/>
-                                    </views>
+                                    <tree string="Rent Contracts" ref="insafety_property_rent_contract_tree_view"/>
+                                    <form string="Rent Contract Form" ref="property_rent_contract_view"/>
                                 </field>
                             </page>
 <!--                            <page string="Rent Contracts">-->

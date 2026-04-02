@@ -53,27 +53,21 @@
                                 <div style="height:5px"/>
                                 <div>Accounts to Distribute Costs</div>
                                 <field name="account_ids">
-                                    <views>
-                                        <list string="Accounts" ref="account.view_account_tree"/>
-                                        <form string="Account Form" ref="account.view_account_form"/>
-                                    </views>
+                                    <list string="Accounts" ref="account.view_account_tree"/>
+                                    <form string="Account Form" ref="account.view_account_form"/>
                                 </field>
                                 <div style="height:5px"/>
                                 <div>Analytic Accounts</div>
                                 <field name="analytic_account_ids">
-                                    <views>
-                                        <list string="Analytic Accounts" ref="account.view_analytic_account_list"/>
-                                        <form string="Analytic Account Form" ref="account.view_analytic_account_form"/>
-                                    </views>
+                                    <list string="Analytic Accounts" ref="account.view_analytic_account_list"/>
+                                    <form string="Analytic Account Form" ref="account.view_analytic_account_form"/>
                                 </field>
                             </page>
                             <page string="Additional Costs Billing">
                                 <group>
                                     <group>
                                         <field name="account_expense_ids" widget="one2many_list">
-                                            <views>
-                                                <list string="Expense Accounts" ref="account.view_account_tree"/>
-                                             </views>
+                                            <list string="Expense Accounts" ref="account.view_account_tree"/>
                                         </field>
                                         <field name="total_vacant_cost"/>
                                     </group>
