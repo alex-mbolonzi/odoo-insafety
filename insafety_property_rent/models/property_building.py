@@ -57,6 +57,8 @@ class Property(models.Model):
     rent_contract_ids = fields.One2many("insafety.property.rent.contract", string="Contracts", compute="_compute_contracts")
     cost_billing_receivable_id = fields.Many2one('account.account', string="Cost Account Receivable", 
                                                  domain=[('deprecated', '=', False)], check_company=True, required=True, tracking=True)
+    garbage_collection_income_account_id = fields.Many2one('account.account', string="Garbage Service Income - Tenant",
+                                                           domain=[('deprecated', '=', False), ('account_type', '=', 'income')], check_company=True, tracking=True)
     cost_billing_tax_ids = fields.Many2many('account.tax', string='Taxes Cost Billing', domain=[('active', '=', True)],relation="insafety_cost_billing_tax_ids")
     cost_billing_payment_term_id = fields.Many2one('account.payment.term', string="Cost Billing Payment Term", required=True, tracking=True)
     cost_billing_qr_code_method = fields.Selection(

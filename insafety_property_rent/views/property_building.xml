@@ -42,6 +42,7 @@
                                     </group>
                                     <group>
                                         <field name="cost_billing_receivable_id" />
+                                        <field name="garbage_collection_income_account_id" />
                                         <field name="cost_billing_tax_ids" widget="many2many_tags"/>
                                         <field name="cost_billing_payment_term_id"/>
                                         <field name="cost_billing_qr_code_method" />
