@@ -212,6 +212,29 @@ class PropertyRentContract(models.Model):
         for a in contract.building_id.analytic_account_ids:
             analyticAccounts[str(a.id)] = 100
 
+        # Build invoice lines dynamically
+        invoice_lines = [
+            (0, 0, {
+                'price_unit': contract.monthly_rent,
+                'account_id': contract.account_receivable_id.id,
+                'tax_ids': [(6, 0, contract.tax_ids.ids)],
+                'name': _('Monthly Rent'),
+                'analytic_distribution': analyticAccounts,
+                'quantity': 1.0,
+            }),
+        ]
+
+        # Add garbage collection line only if amount > 0
+        if contract.monthly_extra_costs > 0:
+            invoice_lines.append((0, 0, {
+                'price_unit': contract.monthly_extra_costs,
+                'account_id': contract.building_id.garbage_collection_income_account_id.id,
+                'tax_ids': [(6, 0, contract.building_id.cost_billing_tax_ids.ids)],
+                'name': _('[GRB_SRV] Garbage Collection'),
+                'analytic_distribution': analyticAccounts,
+                'quantity': 1.0,
+            }))
+
             # FIXED: Removed the outer square brackets
         invoice = self.env['account.move'].create({
             'move_type': 'out_invoice',
@@ -220,32 +243,7 @@ class PropertyRentContract(models.Model):
             'invoice_payment_term_id': contract.invoice_payment_term_id.id,
             'qr_code_method': contract.qr_code_method,
             'journal_id': self.env['account.journal'].search([('type', '=', 'sale'), ('company_id', '=', contract.company_id.id)], limit=1).id,
-            'invoice_line_ids': [
-                (0, 0, {
-                    'price_unit': contract.monthly_rent,
-                    'account_id': contract.account_receivable_id.id,
-                    'tax_ids': [(6, 0, contract.tax_ids.ids)],
-                    'name': _('Monthly Rent'),
-                    'analytic_distribution': analyticAccounts,
-                    'quantity': 1.0,
-                }),
-                # (0, 0, {
-                #     'price_unit': contract.monthly_lump_sum_costs,
-                #     'account_id': contract.building_id.cost_billing_receivable_id.id,
-                #     'tax_ids': [(6, 0, contract.building_id.cost_billing_tax_ids.ids)],
-                #     'name': _('Monthly Lump Sum Costs'),
-                #     'analytic_distribution': analyticAccounts,
-                #     'quantity': 1.0,
-                # }),
-                (0, 0, {
-                    'price_unit': contract.monthly_extra_costs,
-                    'account_id': contract.building_id.garbage_collection_income_account_id.id,
-                    'tax_ids': [(6, 0, contract.building_id.cost_billing_tax_ids.ids)],
-                    'name': _('[GRB_SRV] Garbage Collection'),
-                    'analytic_distribution': analyticAccounts,
-                    'quantity': 1.0,
-                })
-            ],
+            'invoice_line_ids': invoice_lines,
         })
 
         if contract.rent_direct_post:
@@ -276,11 +274,6 @@ class PropertyRentContract(models.Model):
                 <tr>
                     <td>{_('Monthly Garbage Fee')} </td><td style="text-align:right"> {cur} {format(contract.monthly_extra_costs, ".2f")  }</td>
                 </tr>
-                # <tr>
-                #     <td>{_('Monthly Lump Sum Costs')} 
-                #     
-                #     </td><td style="text-align:right"> {cur} {format(contract.monthly_lump_sum_costs, ".2f")  }</td>
-                # </tr>
             </table>
         '''
         invoice.narration = text
