@@ -85,10 +85,14 @@
                                         <button name="create_invoice" class="btn-primary"
                                                 type="object"  string="Create Invoices"/>
                                         <span> </span>
-                                        <button name="generate_monthly_statement"
-                                                string="Generate Monthly Statement"
-                                                type="object" class="btn-primary"/>
-                                    </div>
+                                         <button name="generate_monthly_statement"
+                                                 string="Generate Monthly Statement"
+                                                 type="object" class="btn-primary"/>
+                                     </div>
+                                     <group string="Latest Monthly Statement">
+                                         <field name="document_name" invisible="1"/>
+                                         <field name="document" filename="document_name" readonly="1" widget="binary"/>
+                                     </group>
                                     <div style="height:50px"/>
                                     <field name="rent_contract_ids" widget="one2many_list">
                                         <!-- <views> -->

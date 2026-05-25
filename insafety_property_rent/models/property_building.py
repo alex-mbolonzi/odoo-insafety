@@ -324,35 +324,93 @@ class Property(models.Model):
                 'type': "ir.actions.act_window"
             }
 
-    def generate_monthly_statement(self):
+    def generate_monthly_statement(self, date_from=None, date_to=None):
         for rec in self:
-            today = fields.Date.today()
-            start_date = today.replace(day=1)
-            # Logic to get end of month
-            if start_date.month == 12:
-                next_month = start_date.replace(year=start_date.year + 1, month=1, day=1)
+            if not date_from or not date_to:
+                today = fields.Date.today()
+                start_date = today.replace(day=1)
+                # Logic to get end of month
+                if start_date.month == 12:
+                    next_month = start_date.replace(year=start_date.year + 1, month=1, day=1)
+                else:
+                    next_month = start_date.replace(month=start_date.month + 1, day=1)
+                end_date = next_month - timedelta(days=1)
             else:
-                next_month = start_date.replace(month=start_date.month + 1, day=1)
-            end_date = next_month - timedelta(days=1)
+                start_date = fields.Date.to_date(date_from)
+                end_date = fields.Date.to_date(date_to)
 
             lines = []
-            lines.append(f"Monthly Statement: {rec.name}")
-            lines.append(f"Period: {start_date} - {end_date}")
+            lines.append("========================================================================")
+            lines.append(f"MONTHLY STATEMENT: {rec.name}")
+            lines.append(f"Period: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+            lines.append(f"Generated on: {fields.Date.today().strftime('%Y-%m-%d')}")
+            lines.append("========================================================================")
             lines.append("")
             
+            currency_symbol = rec.company_id.currency_id.symbol or rec.company_id.currency_id.name or ""
+            
             for property in rec.property_ids:
-                tenants = []
+                lines.append(f"Unit: {property.name}")
+                if property.description:
+                    lines.append(f"  Description: {property.description}")
+                
+                active_contracts = []
                 for contract in property.rent_contract_ids:
-                    # Check for overlap
                     c_start = contract.rent_date_from
                     c_end = contract.rent_date_to
                     
+                    # Check for overlap
                     if c_start <= end_date and (not c_end or c_end >= start_date):
-                         tenants.append(contract.tenant_id.name)
+                        active_contracts.append(contract)
                 
-                status = ", ".join(tenants) if tenants else "Vacant"
-                lines.append(f"{property.name}: {status}")
+                if active_contracts:
+                    lines.append("  Status: Occupied")
+                    for i, contract in enumerate(active_contracts, 1):
+                        tenant_name = contract.tenant_id.name or "Unknown Tenant"
+                        rent_amount = contract.monthly_rent
+                        c_from = contract.rent_date_from.strftime('%Y-%m-%d')
+                        c_to = contract.rent_date_to.strftime('%Y-%m-%d') if contract.rent_date_to else "Open-ended"
+                        
+                        overlap_start = max(start_date, contract.rent_date_from)
+                        overlap_end = min(end_date, contract.rent_date_to) if contract.rent_date_to else end_date
+                        overlap_days = (overlap_end - overlap_start).days + 1
+                        
+                        lines.append(f"  Contract {i if len(active_contracts) > 1 else ''}:")
+                        lines.append(f"    Tenant: {tenant_name}")
+                        lines.append(f"    Rent Amount: {rent_amount:,.2f} {currency_symbol}")
+                        lines.append(f"    Contract Period: {c_from} to {c_to}")
+                        lines.append(f"    Occupied Period in Month: {overlap_start.strftime('%Y-%m-%d')} to {overlap_end.strftime('%Y-%m-%d')} ({overlap_days} days)")
+                else:
+                    lines.append("  Status: Vacant")
+                lines.append("-" * 72)
             
             content = "\n".join(lines)
             rec.document = base64.b64encode(content.encode('utf-8'))
-            rec.document_name = f"Monthly_Statement_{start_date.strftime('%Y-%m')}.txt"
+            rec.document_name = f"Monthly_Statement_{rec.name}_{start_date.strftime('%Y-%m')}.txt"
+
+            # Post to chatter to keep historical records
+            attachment = self.env['ir.attachment'].create({
+                'name': rec.document_name,
+                'type': 'binary',
+                'datas': rec.document,
+                'res_model': 'insafety.property.building',
+                'res_id': rec.id,
+            })
+            rec.message_post(
+                body=f"Monthly Statement generated for period {start_date} to {end_date}.",
+                attachment_ids=[attachment.id]
+            )
+
+    @api.model
+    def _cron_generate_monthly_statements(self):
+        today = fields.Date.today()
+        # First day of this month
+        first_of_this_month = today.replace(day=1)
+        # Last day of previous month
+        end_date = first_of_this_month - timedelta(days=1)
+        # First day of previous month
+        start_date = end_date.replace(day=1)
+        
+        buildings = self.search([])
+        buildings.generate_monthly_statement(date_from=start_date, date_to=end_date)
+
