@@ -19,10 +19,19 @@ try:
         print(f"Successfully generated: {building.document_name}")
         if building.document:
             import base64
-            content = base64.b64decode(building.document).decode('utf-8')
-            print("--- STATEMENT CONTENT PREVIEW ---")
-            print("\n".join(content.split("\n")[:15]))
-            print("---------------------------------")
+            import zipfile
+            import io
+            content_bytes = base64.b64decode(building.document)
+            print(f"Successfully generated Excel file: {building.document_name} ({len(content_bytes)} bytes)")
+            try:
+                with zipfile.ZipFile(io.BytesIO(content_bytes)) as zf:
+                    print("--- EXCEL FILE STRUCTURE VERIFIED ---")
+                    print("File list in zip archive:")
+                    for f in zf.namelist()[:10]:
+                        print(f"  {f}")
+                    print("-------------------------------------")
+            except zipfile.BadZipFile:
+                print("WARNING: The generated document is not a valid Excel (.xlsx) file!")
         else:
             print("WARNING: document field is empty!")
             

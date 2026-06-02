@@ -325,6 +325,9 @@ class Property(models.Model):
             }
 
     def generate_monthly_statement(self, date_from=None, date_to=None):
+        import io
+        import xlsxwriter
+
         for rec in self:
             if not date_from or not date_to:
                 today = fields.Date.today()
@@ -339,54 +342,93 @@ class Property(models.Model):
                 start_date = fields.Date.to_date(date_from)
                 end_date = fields.Date.to_date(date_to)
 
-            lines = []
-            lines.append("========================================================================")
-            lines.append(f"MONTHLY STATEMENT: {rec.name}")
-            lines.append(f"Period: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
-            lines.append(f"Generated on: {fields.Date.today().strftime('%Y-%m-%d')}")
-            lines.append("========================================================================")
-            lines.append("")
+            output = io.BytesIO()
+            workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+            worksheet = workbook.add_worksheet("Monthly Statement")
+
+            title_format = workbook.add_format({
+                'bold': True,
+                'font_size': 14,
+                'font_name': 'Arial',
+            })
+            meta_format = workbook.add_format({
+                'font_size': 10,
+                'font_name': 'Arial',
+            })
+            header_format = workbook.add_format({
+                'bold': True,
+                'font_name': 'Arial',
+                'bg_color': '#EAEAEA',
+                'border': 1,
+                'align': 'left',
+            })
+            cell_format = workbook.add_format({
+                'font_name': 'Arial',
+                'border': 1,
+                'align': 'left',
+            })
             
             currency_symbol = rec.company_id.currency_id.symbol or rec.company_id.currency_id.name or ""
+            currency_format_str = f'#,##0.00 "{currency_symbol}"' if currency_symbol else '#,##0.00'
             
+            num_cell_format = workbook.add_format({
+                'font_name': 'Arial',
+                'border': 1,
+                'align': 'right',
+                'num_format': currency_format_str
+            })
+
+            # Write Title Block
+            worksheet.write(0, 0, f"MONTHLY STATEMENT: {rec.name}", title_format)
+            worksheet.write(1, 0, f"Period: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}", meta_format)
+            worksheet.write(2, 0, f"Generated on: {fields.Date.today().strftime('%Y-%m-%d')}", meta_format)
+
+            # Headers
+            headers = ["Unit", "Description", "Status", "Tenant", "Rent Amount"]
+            for col_num, header in enumerate(headers):
+                worksheet.write(4, col_num, header, header_format)
+
+            # Set column widths
+            worksheet.set_column(0, 0, 15)  # Unit
+            worksheet.set_column(1, 1, 30)  # Description
+            worksheet.set_column(2, 2, 12)  # Status
+            worksheet.set_column(3, 3, 25)  # Tenant
+            worksheet.set_column(4, 4, 15)  # Rent Amount
+
+            row_num = 5
             for property in rec.property_ids:
-                lines.append(f"Unit: {property.name}")
-                if property.description:
-                    lines.append(f"  Description: {property.description}")
-                
                 active_contracts = []
                 for contract in property.rent_contract_ids:
                     c_start = contract.rent_date_from
                     c_end = contract.rent_date_to
-                    
-                    # Check for overlap
                     if c_start <= end_date and (not c_end or c_end >= start_date):
                         active_contracts.append(contract)
-                
+
+                desc = property.description or ""
                 if active_contracts:
-                    lines.append("  Status: Occupied")
-                    for i, contract in enumerate(active_contracts, 1):
+                    for contract in active_contracts:
                         tenant_name = contract.tenant_id.name or "Unknown Tenant"
                         rent_amount = contract.monthly_rent
-                        c_from = contract.rent_date_from.strftime('%Y-%m-%d')
-                        c_to = contract.rent_date_to.strftime('%Y-%m-%d') if contract.rent_date_to else "Open-ended"
                         
-                        overlap_start = max(start_date, contract.rent_date_from)
-                        overlap_end = min(end_date, contract.rent_date_to) if contract.rent_date_to else end_date
-                        overlap_days = (overlap_end - overlap_start).days + 1
-                        
-                        lines.append(f"  Contract {i if len(active_contracts) > 1 else ''}:")
-                        lines.append(f"    Tenant: {tenant_name}")
-                        lines.append(f"    Rent Amount: {rent_amount:,.2f} {currency_symbol}")
-                        lines.append(f"    Contract Period: {c_from} to {c_to}")
-                        lines.append(f"    Occupied Period in Month: {overlap_start.strftime('%Y-%m-%d')} to {overlap_end.strftime('%Y-%m-%d')} ({overlap_days} days)")
+                        worksheet.write(row_num, 0, property.name, cell_format)
+                        worksheet.write(row_num, 1, desc, cell_format)
+                        worksheet.write(row_num, 2, "Occupied", cell_format)
+                        worksheet.write(row_num, 3, tenant_name, cell_format)
+                        worksheet.write_number(row_num, 4, rent_amount, num_cell_format)
+                        row_num += 1
                 else:
-                    lines.append("  Status: Vacant")
-                lines.append("-" * 72)
+                    worksheet.write(row_num, 0, property.name, cell_format)
+                    worksheet.write(row_num, 1, desc, cell_format)
+                    worksheet.write(row_num, 2, "Vacant", cell_format)
+                    worksheet.write(row_num, 3, "", cell_format)
+                    worksheet.write(row_num, 4, "", cell_format)
+                    row_num += 1
+
+            workbook.close()
+            output.seek(0)
             
-            content = "\n".join(lines)
-            rec.document = base64.b64encode(content.encode('utf-8'))
-            rec.document_name = f"Monthly_Statement_{rec.name}_{start_date.strftime('%Y-%m')}.txt"
+            rec.document = base64.b64encode(output.read())
+            rec.document_name = f"Monthly_Statement_{rec.name}_{start_date.strftime('%Y-%m')}.xlsx"
 
             # Post to chatter to keep historical records
             attachment = self.env['ir.attachment'].create({
