@@ -330,14 +330,9 @@ class Property(models.Model):
 
         for rec in self:
             if not date_from or not date_to:
-                today = fields.Date.today()
-                start_date = today.replace(day=1)
-                # Logic to get end of month
-                if start_date.month == 12:
-                    next_month = start_date.replace(year=start_date.year + 1, month=1, day=1)
-                else:
-                    next_month = start_date.replace(month=start_date.month + 1, day=1)
-                end_date = next_month - timedelta(days=1)
+                # Use the billing period dates defined on the record
+                start_date = rec.billing_period_from
+                end_date = rec.billing_period_to
             else:
                 start_date = fields.Date.to_date(date_from)
                 end_date = fields.Date.to_date(date_to)
