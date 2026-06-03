@@ -246,6 +246,7 @@ class PropertyRentContract(models.Model):
             )
             return
 
+
         analyticAccounts = {}
         for a in contract.building_id.analytic_account_ids:
             analyticAccounts[str(a.id)] = 100
@@ -263,21 +264,29 @@ class PropertyRentContract(models.Model):
         ]
 
         # Add garbage collection line only if amount > 0
-        # if contract.monthly_extra_costs > 0:
-        #     if not contract.building_id.garbage_collection_income_account_id:
-        #         _logger.warning(
-        #             "Garbage collection account not set on building %s. Skipping garbage line for tenant %s.",
-        #             contract.building_id.name, contract.tenant_id.name
-        #         )
-        #     else:
-        #         invoice_lines.append((0, 0, {
-        #             'price_unit': contract.monthly_extra_costs,
-        #             'account_id': contract.building_id.garbage_collection_income_account_id.id,
-        #             'tax_ids': [(6, 0, contract.building_id.cost_billing_tax_ids.ids)],
-        #             'name': _('[GRB_SRV] Garbage Collection'),
-        #             'analytic_distribution': analyticAccounts,
-        #             'quantity': 1.0,
-        #         }))
+        if contract.monthly_extra_costs > 0:
+            if not contract.building_id.garbage_collection_income_account_id:
+                _logger.warning(
+                    "Garbage collection account not set on building %s. Skipping garbage line for tenant %s.",
+                    contract.building_id.name, contract.tenant_id.name
+                )
+            else:
+                _logger.info(
+                    "Creating invoice for tenant %s. Rent Account: %s (Type: %s). Garbage Account: %s (Type: %s).",
+                     contract.tenant_id.name,
+                     contract.account_receivable_id.code,
+                     contract.account_receivable_id.account_type,
+            contract.building_id.garbage_collection_income_account_id.code if contract.building_id.garbage_collection_income_account_id else 'None',
+            contract.building_id.garbage_collection_income_account_id.account_type if contract.building_id.garbage_collection_income_account_id else 'None'
+        )
+                invoice_lines.append((0, 0, {
+                    'price_unit': contract.monthly_extra_costs,
+                    'account_id': contract.building_id.garbage_collection_income_account_id.id,
+                    'tax_ids': [(6, 0, contract.building_id.cost_billing_tax_ids.ids)],
+                    'name': _('[GRB_SRV] Garbage Collection'),
+                    'analytic_distribution': analyticAccounts,
+                    'quantity': 1.0,
+                }))
 
             # FIXED: Removed the outer square brackets
         invoice = self.env['account.move'].create({
