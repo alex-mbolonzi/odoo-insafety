@@ -166,8 +166,21 @@ class PropertyRentContract(models.Model):
         'res_id': self.id, 
         }
     
-    def _create_invoices(self):
-        iDay = datetime.today() + timedelta(days=31)
+    def _create_invoices(self, target_date=None):
+        """Generate monthly rent invoices.
+        
+        Args:
+            target_date: Optional date (e.g. date(2026, 5, 1)) to generate invoices for 
+                         a specific month. If not provided, defaults to next month.
+        """
+        if target_date:
+            if isinstance(target_date, str):
+                target_date = datetime.strptime(target_date, '%Y-%m-%d').date()
+            iDay = target_date
+        else:
+            iDay = datetime.today() + timedelta(days=31)
+            iDay = iDay.date() if isinstance(iDay, datetime) else iDay
+
         rec = self.env['insafety.property.rent.log'].search([
             ('year','=', iDay.year),
             ('month','=', iDay.month),
@@ -197,7 +210,7 @@ class PropertyRentContract(models.Model):
                                 if contract.rent_date_to >= t:
                                     c = contract 
                     if c:
-                        self.create_invoice(c)
+                        self.create_invoice(c, target_date=iDay)
                     
          
         self.env['insafety.property.rent.log'].create(
@@ -207,9 +220,26 @@ class PropertyRentContract(models.Model):
                 'year': iDay.year
             })
 
-    def create_invoice(self, contract):
+    def create_invoice(self, contract, target_date=None):
+        """Create a single rent invoice for a contract.
+        
+        Args:
+            contract: The rent contract record.
+            target_date: Optional date for the invoice month. 
+                         If not provided, defaults to next month.
+        """
         self = self.with_company(contract.company_id)
         locale.setlocale(locale.LC_ALL, contract.tenant_id.lang + '.UTF-8')
+
+        # Determine the invoice date (1st of target month)
+        if target_date:
+            if isinstance(target_date, str):
+                target_date = datetime.strptime(target_date, '%Y-%m-%d').date()
+            invoice_date = target_date.replace(day=1)
+        else:
+            iDay = datetime.today() + timedelta(days=31)
+            invoice_date = iDay.replace(day=1) if hasattr(iDay, 'replace') else iDay
+            invoice_date = invoice_date.date() if isinstance(invoice_date, datetime) else invoice_date
 
         # Validate required configuration before creating invoice
         journal = self.env['account.journal'].search([
@@ -263,11 +293,10 @@ class PropertyRentContract(models.Model):
                     'quantity': 1.0,
                 }))
 
-            # FIXED: Removed the outer square brackets
         invoice = self.env['account.move'].create({
             'move_type': 'out_invoice',
             'partner_id': contract.tenant_id.id,
-            'invoice_date': time.strftime('%Y-%m-01'),
+            'invoice_date': invoice_date.strftime('%Y-%m-%d'),
             'invoice_payment_term_id': contract.invoice_payment_term_id.id,
             'qr_code_method': contract.qr_code_method,
             'journal_id': journal.id,
@@ -277,9 +306,8 @@ class PropertyRentContract(models.Model):
         if contract.rent_direct_post:
             invoice.action_post()
 
-        iDay = datetime.today() + timedelta(days=31)
-        month = iDay.strftime('%B')
-        year = iDay.strftime('%Y')
+        month = invoice_date.strftime('%B')
+        year = invoice_date.strftime('%Y')
 
         unit = contract.property_id.display_name + ", " + contract.property_id.description
 
