@@ -167,12 +167,6 @@ class PropertyRentContract(models.Model):
         }
     
     def _create_invoices(self, target_date=None):
-        """Generate monthly rent invoices.
-        
-        Args:
-            target_date: Optional date (e.g. date(2026, 5, 1)) to generate invoices for 
-                         a specific month. If not provided, defaults to next month.
-        """
         if target_date:
             if isinstance(target_date, str):
                 target_date = datetime.strptime(target_date, '%Y-%m-%d').date()
@@ -212,7 +206,7 @@ class PropertyRentContract(models.Model):
                     if c:
                         self.create_invoice(c, target_date=iDay)
                     
-         
+          
         self.env['insafety.property.rent.log'].create(
             {
                 'date_time': datetime.today(),
@@ -221,23 +215,15 @@ class PropertyRentContract(models.Model):
             })
 
     def create_invoice(self, contract, target_date=None):
-        """Create a single rent invoice for a contract.
-        
-        Args:
-            contract: The rent contract record.
-            target_date: Optional date for the invoice month. 
-                         If not provided, defaults to next month.
-        """
         self = self.with_company(contract.company_id)
         locale.setlocale(locale.LC_ALL, contract.tenant_id.lang + '.UTF-8')
 
-        # Determine the invoice date (1st of target month)
         if target_date:
             if isinstance(target_date, str):
                 target_date = datetime.strptime(target_date, '%Y-%m-%d').date()
             invoice_date = target_date.replace(day=1)
         else:
-            iDay = datetime.today() - timedelta(days=-34)
+            iDay = datetime.today() + timedelta(days=31)
             invoice_date = iDay.replace(day=1) if hasattr(iDay, 'replace') else iDay
             invoice_date = invoice_date.date() if isinstance(invoice_date, datetime) else invoice_date
 
@@ -277,26 +263,27 @@ class PropertyRentContract(models.Model):
         ]
 
         # Add garbage collection line only if amount > 0
-        # if contract.monthly_extra_costs > 0:
-        #     if not contract.building_id.garbage_collection_income_account_id:
-        #         _logger.warning(
-        #             "Garbage collection account not set on building %s. Skipping garbage line for tenant %s.",
-        #             contract.building_id.name, contract.tenant_id.name
-        #         )
-        #     else:
-        #         invoice_lines.append((0, 0, {
-        #             'price_unit': contract.monthly_extra_costs,
-        #             'account_id': contract.building_id.garbage_collection_income_account_id.id,
-        #             'tax_ids': [(6, 0, contract.building_id.cost_billing_tax_ids.ids)],
-        #             'name': _('[GRB_SRV] Garbage Collection'),
-        #             'analytic_distribution': analyticAccounts,
-        #             'quantity': 1.0,
-        #         }))
+        if contract.monthly_extra_costs > 0:
+            if not contract.building_id.garbage_collection_income_account_id:
+                _logger.warning(
+                    "Garbage collection account not set on building %s. Skipping garbage line for tenant %s.",
+                    contract.building_id.name, contract.tenant_id.name
+                )
+            else:
+                invoice_lines.append((0, 0, {
+                    'price_unit': contract.monthly_extra_costs,
+                    'account_id': contract.building_id.garbage_collection_income_account_id.id,
+                    'tax_ids': [(6, 0, contract.building_id.cost_billing_tax_ids.ids)],
+                    'name': _('[GRB_SRV] Garbage Collection'),
+                    'analytic_distribution': analyticAccounts,
+                    'quantity': 1.0,
+                }))
 
+            # FIXED: Removed the outer square brackets
         invoice = self.env['account.move'].create({
             'move_type': 'out_invoice',
             'partner_id': contract.tenant_id.id,
-            'invoice_date': invoice_date.strftime('%Y-%m-%d'),
+            'invoice_date': time.strftime('%Y-%m-01'),
             'invoice_payment_term_id': contract.invoice_payment_term_id.id,
             'qr_code_method': contract.qr_code_method,
             'journal_id': journal.id,
