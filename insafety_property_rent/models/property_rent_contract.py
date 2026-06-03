@@ -283,7 +283,7 @@ class PropertyRentContract(models.Model):
         invoice = self.env['account.move'].create({
             'move_type': 'out_invoice',
             'partner_id': contract.tenant_id.id,
-            'invoice_date': time.strftime('%Y-%m-01'),
+            'invoice_date': invoice_date.strftime('%Y-%m-01'),
             'invoice_payment_term_id': contract.invoice_payment_term_id.id,
             'qr_code_method': contract.qr_code_method,
             'journal_id': journal.id,
