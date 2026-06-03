@@ -242,7 +242,7 @@ class PropertyRentContract(models.Model):
             'invoice_date': time.strftime('%Y-%m-01'),
             'invoice_payment_term_id': contract.invoice_payment_term_id.id,
             'qr_code_method': contract.qr_code_method,
-            'journal_id': self.env['account.journal'].search([('type', '=', 'sales'), ('company_id', '=', contract.company_id.id), ('code', '=', 'TIJ')], limit=1).id,
+            'journal_id': self.env['account.journal'].search([('type', '=', 'sale'), ('company_id', '=', contract.company_id.id), ('code', '=', 'TIJ')], limit=1).id,
             'invoice_line_ids': invoice_lines,
         })
 
