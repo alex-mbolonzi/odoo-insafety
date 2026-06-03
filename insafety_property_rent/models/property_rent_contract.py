@@ -277,21 +277,21 @@ class PropertyRentContract(models.Model):
         ]
 
         # Add garbage collection line only if amount > 0
-        if contract.monthly_extra_costs > 0:
-            if not contract.building_id.garbage_collection_income_account_id:
-                _logger.warning(
-                    "Garbage collection account not set on building %s. Skipping garbage line for tenant %s.",
-                    contract.building_id.name, contract.tenant_id.name
-                )
-            else:
-                invoice_lines.append((0, 0, {
-                    'price_unit': contract.monthly_extra_costs,
-                    'account_id': contract.building_id.garbage_collection_income_account_id.id,
-                    'tax_ids': [(6, 0, contract.building_id.cost_billing_tax_ids.ids)],
-                    'name': _('[GRB_SRV] Garbage Collection'),
-                    'analytic_distribution': analyticAccounts,
-                    'quantity': 1.0,
-                }))
+        # if contract.monthly_extra_costs > 0:
+        #     if not contract.building_id.garbage_collection_income_account_id:
+        #         _logger.warning(
+        #             "Garbage collection account not set on building %s. Skipping garbage line for tenant %s.",
+        #             contract.building_id.name, contract.tenant_id.name
+        #         )
+        #     else:
+        #         invoice_lines.append((0, 0, {
+        #             'price_unit': contract.monthly_extra_costs,
+        #             'account_id': contract.building_id.garbage_collection_income_account_id.id,
+        #             'tax_ids': [(6, 0, contract.building_id.cost_billing_tax_ids.ids)],
+        #             'name': _('[GRB_SRV] Garbage Collection'),
+        #             'analytic_distribution': analyticAccounts,
+        #             'quantity': 1.0,
+        #         }))
 
         invoice = self.env['account.move'].create({
             'move_type': 'out_invoice',
