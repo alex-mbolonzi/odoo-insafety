@@ -271,14 +271,14 @@ class PropertyRentContract(models.Model):
                     contract.building_id.name, contract.tenant_id.name
                 )
             else:
-                _logger.info(
-                    "Creating invoice for tenant %s. Rent Account: %s (Type: %s). Garbage Account: %s (Type: %s).",
-                     contract.tenant_id.name,
-                     contract.account_receivable_id.code,
-                     contract.account_receivable_id.account_type,
-            contract.building_id.garbage_collection_income_account_id.code if contract.building_id.garbage_collection_income_account_id else 'None',
-            contract.building_id.garbage_collection_income_account_id.account_type if contract.building_id.garbage_collection_income_account_id else 'None'
-        )
+        #         _logger.info(
+        #             "Creating invoice for tenant %s. Rent Account: %s (Type: %s). Garbage Account: %s (Type: %s).",
+        #              contract.tenant_id.name,
+        #              contract.account_receivable_id.code,
+        #              contract.account_receivable_id.account_type,
+        #     contract.building_id.garbage_collection_income_account_id.code if contract.building_id.garbage_collection_income_account_id else 'None',
+        #     contract.building_id.garbage_collection_income_account_id.account_type if contract.building_id.garbage_collection_income_account_id else 'None'
+        # )
                 invoice_lines.append((0, 0, {
                     'price_unit': contract.monthly_extra_costs,
                     'account_id': contract.building_id.garbage_collection_income_account_id.id,
