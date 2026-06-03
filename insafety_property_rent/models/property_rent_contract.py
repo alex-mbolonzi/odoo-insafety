@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*- 
+import logging
 import locale
 from datetime import datetime, timedelta
 import time 
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 from odoo import _
+
+_logger = logging.getLogger(__name__)
 
 class PropertyRentContract(models.Model):
     _inherit = "mail.thread"
@@ -208,6 +211,25 @@ class PropertyRentContract(models.Model):
         self = self.with_company(contract.company_id)
         locale.setlocale(locale.LC_ALL, contract.tenant_id.lang + '.UTF-8')
 
+        # Validate required configuration before creating invoice
+        journal = self.env['account.journal'].search([
+            ('type', '=', 'sale'),
+            ('company_id', '=', contract.company_id.id),
+            ('code', '=', 'TIJ'),
+        ], limit=1)
+        if not journal:
+            _logger.error(
+                "Journal TIJ not found for company %s (id=%s). Skipping invoice for contract %s.",
+                contract.company_id.name, contract.company_id.id, contract.tenant_id.name
+            )
+            return
+        if not contract.account_receivable_id:
+            _logger.error(
+                "No receivable account set on contract for tenant %s. Skipping.",
+                contract.tenant_id.name
+            )
+            return
+
         analyticAccounts = {}
         for a in contract.building_id.analytic_account_ids:
             analyticAccounts[str(a.id)] = 100
@@ -226,14 +248,20 @@ class PropertyRentContract(models.Model):
 
         # Add garbage collection line only if amount > 0
         if contract.monthly_extra_costs > 0:
-            invoice_lines.append((0, 0, {
-                'price_unit': contract.monthly_extra_costs,
-                'account_id': contract.building_id.garbage_collection_income_account_id.id,
-                'tax_ids': [(6, 0, contract.building_id.cost_billing_tax_ids.ids)],
-                'name': _('[GRB_SRV] Garbage Collection'),
-                'analytic_distribution': analyticAccounts,
-                'quantity': 1.0,
-            }))
+            if not contract.building_id.garbage_collection_income_account_id:
+                _logger.warning(
+                    "Garbage collection account not set on building %s. Skipping garbage line for tenant %s.",
+                    contract.building_id.name, contract.tenant_id.name
+                )
+            else:
+                invoice_lines.append((0, 0, {
+                    'price_unit': contract.monthly_extra_costs,
+                    'account_id': contract.building_id.garbage_collection_income_account_id.id,
+                    'tax_ids': [(6, 0, contract.building_id.cost_billing_tax_ids.ids)],
+                    'name': _('[GRB_SRV] Garbage Collection'),
+                    'analytic_distribution': analyticAccounts,
+                    'quantity': 1.0,
+                }))
 
             # FIXED: Removed the outer square brackets
         invoice = self.env['account.move'].create({
@@ -242,7 +270,7 @@ class PropertyRentContract(models.Model):
             'invoice_date': time.strftime('%Y-%m-01'),
             'invoice_payment_term_id': contract.invoice_payment_term_id.id,
             'qr_code_method': contract.qr_code_method,
-            'journal_id': self.env['account.journal'].search([('type', '=', 'sale'), ('company_id', '=', contract.company_id.id), ('code', '=', 'TIJ')], limit=1).id,
+            'journal_id': journal.id,
             'invoice_line_ids': invoice_lines,
         })
 
