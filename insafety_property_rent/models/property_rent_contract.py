@@ -237,7 +237,7 @@ class PropertyRentContract(models.Model):
                 target_date = datetime.strptime(target_date, '%Y-%m-%d').date()
             invoice_date = target_date.replace(day=1)
         else:
-            iDay = datetime.today() + timedelta(days=31)
+            iDay = datetime.today() - timedelta(days=-34)
             invoice_date = iDay.replace(day=1) if hasattr(iDay, 'replace') else iDay
             invoice_date = invoice_date.date() if isinstance(invoice_date, datetime) else invoice_date
 
