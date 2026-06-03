@@ -132,119 +132,119 @@ class Property(models.Model):
             rec.total_rooms = total_rooms
             rec.total_cost_factor_custom = total_cost_factor_custom
 
-    def create_invoice(self):
-        self = self.with_company(self.company_id)
-        building = self
-        contracts = self.rent_contract_ids
-        partner = self.env['res.partner'].search([('name', '=', building.name)], limit=1)
+    # def create_invoice(self):
+    #     self = self.with_company(self.company_id)
+    #     building = self
+    #     contracts = self.rent_contract_ids
+    #     partner = self.env['res.partner'].search([('name', '=', building.name)], limit=1)
 
-        analyticAccounts = {}
-        for a in building.analytic_account_ids:
-            analyticAccounts[str(a.id)] = 100
+    #     analyticAccounts = {}
+    #     for a in building.analytic_account_ids:
+    #         analyticAccounts[str(a.id)] = 100
         
 
 
-        for contract in contracts:
-            if True: # contract.cost_billing_total != 0:
-                move_type = 'out_invoice'
-                cost_billing_total = contract.cost_billing_total
-                if contract.cost_billing_total < 0:
-                    move_type = 'in_invoice'
-                    cost_billing_total =  0 - contract.cost_billing_total
-                locale.setlocale(locale.LC_ALL, contract.tenant_id.lang + '.UTF-8')
-                total_expense = building.total_expense
-                distribution_base = contract.distribution_base if contract.distribution_base != 0 else 1.0
-                fraction_expense = total_expense / 365 * contract.rent_days / distribution_base * contract.distribution_key
-                fraction_text = f"{_('Distribution')}: {building.distribute_by} {distribution_base}/{contract.distribution_key} "
-                if contract.rent_days != 365:
-                        fraction_text += f"365/{contract.rent_days}"
-                administrative_expenses = fraction_expense * building.administrative_expenses / 100
-                invoice = self.env['account.move'].create([
-                            {
-                                'move_type': move_type, 
-                                'partner_id': partner.id if partner else contract.tenant_id.id,
-                                'invoice_date': time.strftime('%Y-%m-01'),
-                                'invoice_payment_term_id': building.cost_billing_payment_term_id.id,
-                                'qr_code_method': building.cost_billing_qr_code_method,
-                                'invoice_line_ids': [
-                                    (0, 0, {'price_unit': cost_billing_total - administrative_expenses, 
-                                                            'account_id': building.cost_billing_receivable_id.id, 
-                                                            'tax_ids': building.cost_billing_tax_ids,
-                                                            'name': _('Balance'),
-                                                            'analytic_distribution': analyticAccounts}),
-                                                      (0, 0, {'price_unit': administrative_expenses, 
-                                                            'account_id': building.cost_billing_administrative_fees_id.id, 
-                                                            'tax_ids': building.cost_billing_administrative_tax_ids,
-                                                            'name': _('Administrative Fees'),
-                                                            'analytic_distribution': analyticAccounts})           
-                                                    ],
-                            },
-                        ])      
-                text = f'''
-                    <p style="page-break-before:always;"> </p>
-                    <h5>{_('Aditional Cost Billing')}, {building.billing_period_from.strftime("%x")} - {building.billing_period_to.strftime("%x")}</h5>
-                    <h5>{building.name}, {building.description}, {contract.property_id.name}, {contract.property_id.description} </h5>     
-                    <table>
-                    <tbody>
-                '''
-                cur = self.env.company.currency_id.display_name
+    #     for contract in contracts:
+    #         if True: # contract.cost_billing_total != 0:
+    #             move_type = 'out_invoice'
+    #             cost_billing_total = contract.cost_billing_total
+    #             if contract.cost_billing_total < 0:
+    #                 move_type = 'in_invoice'
+    #                 cost_billing_total =  0 - contract.cost_billing_total
+    #             locale.setlocale(locale.LC_ALL, contract.tenant_id.lang + '.UTF-8')
+    #             total_expense = building.total_expense
+    #             distribution_base = contract.distribution_base if contract.distribution_base != 0 else 1.0
+    #             fraction_expense = total_expense / 365 * contract.rent_days / distribution_base * contract.distribution_key
+    #             fraction_text = f"{_('Distribution')}: {building.distribute_by} {distribution_base}/{contract.distribution_key} "
+    #             if contract.rent_days != 365:
+    #                     fraction_text += f"365/{contract.rent_days}"
+    #             administrative_expenses = fraction_expense * building.administrative_expenses / 100
+    #             invoice = self.env['account.move'].create([
+    #                         {
+    #                             'move_type': move_type, 
+    #                             'partner_id': partner.id if partner else contract.tenant_id.id,
+    #                             'invoice_date': time.strftime('%Y-%m-01'),
+    #                             'invoice_payment_term_id': building.cost_billing_payment_term_id.id,
+    #                             'qr_code_method': building.cost_billing_qr_code_method,
+    #                             'invoice_line_ids': [
+    #                                 (0, 0, {'price_unit': cost_billing_total - administrative_expenses, 
+    #                                                         'account_id': building.cost_billing_receivable_id.id, 
+    #                                                         'tax_ids': building.cost_billing_tax_ids,
+    #                                                         'name': _('Balance'),
+    #                                                         'analytic_distribution': analyticAccounts}),
+    #                                                   (0, 0, {'price_unit': administrative_expenses, 
+    #                                                         'account_id': building.cost_billing_administrative_fees_id.id, 
+    #                                                         'tax_ids': building.cost_billing_administrative_tax_ids,
+    #                                                         'name': _('Administrative Fees'),
+    #                                                         'analytic_distribution': analyticAccounts})           
+    #                                                 ],
+    #                         },
+    #                     ])      
+    #             text = f'''
+    #                 <p style="page-break-before:always;"> </p>
+    #                 <h5>{_('Aditional Cost Billing')}, {building.billing_period_from.strftime("%x")} - {building.billing_period_to.strftime("%x")}</h5>
+    #                 <h5>{building.name}, {building.description}, {contract.property_id.name}, {contract.property_id.description} </h5>     
+    #                 <table>
+    #                 <tbody>
+    #             '''
+    #             cur = self.env.company.currency_id.display_name
 
-                total_expense = building.total_expense
-                # distribution_base = contract.distribution_base if contract.distribution_base != 0 else 1.0
-                fraction_expense = total_expense / 365 * contract.rent_days / distribution_base * contract.distribution_key
-                fraction_text = f"{_('share calc')}: {building.distribute_by} {distribution_base}/{contract.distribution_key} "
-                if contract.rent_days != 365:
-                        fraction_text += f"365/{contract.rent_days}"
-                administrative_expenses = fraction_expense  * building.administrative_expenses / 100
+    #             total_expense = building.total_expense
+    #             # distribution_base = contract.distribution_base if contract.distribution_base != 0 else 1.0
+    #             fraction_expense = total_expense / 365 * contract.rent_days / distribution_base * contract.distribution_key
+    #             fraction_text = f"{_('share calc')}: {building.distribute_by} {distribution_base}/{contract.distribution_key} "
+    #             if contract.rent_days != 365:
+    #                     fraction_text += f"365/{contract.rent_days}"
+    #             administrative_expenses = fraction_expense  * building.administrative_expenses / 100
 
-                if building.cost_billing_direct_post:
-                    invoice.action_post()
+    #             if building.cost_billing_direct_post:
+    #                 invoice.action_post()
 
-                for expense in building.account_expense_ids:
-                    text += f'''
-                            <tr>
-                                <td> {expense.name}&nbsp;</td>
-                                <td>{expense.currency_id.display_name}&nbsp;</td>
-                                <td style="text-align:right">{format(expense.current_balance, ".2f")}</td>
-                            </tr>
-                    '''        
-                text += f'''
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td>Total</td>
-                        <td>{cur}</td>
-                        <td style="text-align:right">{format(total_expense, ".2f")}</td>
-                    </tr>
-                    <tr>
-                        <td>{_('Your share')}*</td>
-                        <td>{cur}</td>
-                        <td style="text-align:right">{format(fraction_expense, ".2f")}</td>
-                    </tr>
-                    <tr>
-                    <tr>
-                        <td>{_('paid')}</td>
-                        <td>{cur}</td>
-                        <td style="text-align:right"> - {format(contract.monthly_extra_costs_paid_calc, ".2f")}</td>
-                    </tr>
-                    <tr>
-                        <td>{_('Balance')}</td>
-                        <td>{cur}</td>
-                        <td style="text-align:right">{format(fraction_expense - contract.monthly_extra_costs_paid_calc, ".2f")}</td>
-                    </tr>              
-                </tfoot>
-                </table>
-                <p><br></p>
-                <table>
-                <tr>
-                    <td>+ {_('Administrative Fees')}&nbsp;</td>
-                    <td>{cur}&nbsp;</td>
-                    <td style="text-align:right">{format(administrative_expenses, ".2f")}</td>
-                </tr>
-                </table>
-                <div>*{fraction_text}</div>
-                '''
-                invoice.narration = text
+    #             for expense in building.account_expense_ids:
+    #                 text += f'''
+    #                         <tr>
+    #                             <td> {expense.name}&nbsp;</td>
+    #                             <td>{expense.currency_id.display_name}&nbsp;</td>
+    #                             <td style="text-align:right">{format(expense.current_balance, ".2f")}</td>
+    #                         </tr>
+    #                 '''        
+    #             text += f'''
+    #             </tbody>
+    #             <tfoot>
+    #                 <tr>
+    #                     <td>Total</td>
+    #                     <td>{cur}</td>
+    #                     <td style="text-align:right">{format(total_expense, ".2f")}</td>
+    #                 </tr>
+    #                 <tr>
+    #                     <td>{_('Your share')}*</td>
+    #                     <td>{cur}</td>
+    #                     <td style="text-align:right">{format(fraction_expense, ".2f")}</td>
+    #                 </tr>
+    #                 <tr>
+    #                 <tr>
+    #                     <td>{_('paid')}</td>
+    #                     <td>{cur}</td>
+    #                     <td style="text-align:right"> - {format(contract.monthly_extra_costs_paid_calc, ".2f")}</td>
+    #                 </tr>
+    #                 <tr>
+    #                     <td>{_('Balance')}</td>
+    #                     <td>{cur}</td>
+    #                     <td style="text-align:right">{format(fraction_expense - contract.monthly_extra_costs_paid_calc, ".2f")}</td>
+    #                 </tr>              
+    #             </tfoot>
+    #             </table>
+    #             <p><br></p>
+    #             <table>
+    #             <tr>
+    #                 <td>+ {_('Administrative Fees')}&nbsp;</td>
+    #                 <td>{cur}&nbsp;</td>
+    #                 <td style="text-align:right">{format(administrative_expenses, ".2f")}</td>
+    #             </tr>
+    #             </table>
+    #             <div>*{fraction_text}</div>
+    #             '''
+    #             invoice.narration = text
     
     def calculate(self):
         pass
