@@ -457,7 +457,7 @@ class Property(models.Model):
                             ])
                             # Filter to only lines within the period (extra safety)
                             filtered_lines = payment_lines.filtered(
-                                lambda l: start_date <= l.date <= end_date
+                                lambda l: start_date <= l.move_id.date <= end_date
                             )
                             for pline in filtered_lines:
                                 payment_total += pline.debit
