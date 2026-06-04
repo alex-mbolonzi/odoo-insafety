@@ -384,6 +384,13 @@ class Property(models.Model):
                 ('code', '=', 'TIJ'),
             ], limit=1)
 
+            # Payment journals - tenant payments may come from any of these banks
+            payment_journals = self.env['account.journal'].search([
+                ('type', '=', 'bank'),
+                ('company_id', '=', rec.company_id.id),
+                ('code', 'in', ['PBNK1', 'LLDP', 'BNK2']),
+            ])
+
             invoice_columns = ['Expected Rent', 'House Deposit', 'Water Deposit', 'Elec Deposit', 'Water', 'Garbage']
             # Map unique keywords found in account.move.line names to statement columns
             keyword_mapping = [
@@ -408,8 +415,9 @@ class Property(models.Model):
                 if active_contracts:
                     for contract in active_contracts:
                         contract_amounts = {col: 0.0 for col in invoice_columns}
+                        payment_total = 0.0
                         if journal:
-                            # Query journal items (account.move.line) directly
+                            # Query invoice journal items directly
                             lines = self.env['account.move.line'].search([
                                 ('journal_id', '=', journal.id),
                                 ('partner_id', '=', contract.tenant_id.id),
@@ -429,6 +437,22 @@ class Property(models.Model):
                                         contract_amounts[col] += line.credit
                                         break
 
+                        # Query payment journal items - sum debit across all 3 bank journals
+                        if payment_journals:
+                            payment_lines = self.env['account.move.line'].search([
+                                ('journal_id', 'in', payment_journals.ids),
+                                ('partner_id', '=', contract.tenant_id.id),
+                                ('date', '>=', start_date),
+                                ('date', '<=', end_date),
+                                ('move_id.state', '=', 'posted'),
+                                ('debit', '>', 0),
+                                ('company_id', '=', rec.company_id.id),
+                            ])
+                            for pline in payment_lines:
+                                payment_total += pline.debit
+
+                        contract_amounts['Payment'] = payment_total
+
                         property_contract_data.append({
                             'property': property,
                             'contract': contract,
@@ -436,15 +460,18 @@ class Property(models.Model):
                             'line_amounts': contract_amounts
                         })
                 else:
+                    vacant_amounts = {col: 0.0 for col in invoice_columns}
+                    vacant_amounts['Payment'] = 0.0
                     property_contract_data.append({
                         'property': property,
                         'contract': None,
                         'status': 'Vacant',
-                        'line_amounts': {col: 0.0 for col in invoice_columns}
+                        'line_amounts': vacant_amounts
                     })
 
             # Headers
-            headers = ["Unit", "Description", "Status", "Tenant", "Rent Amount"] + invoice_columns
+            all_columns = invoice_columns + ['Payment']
+            headers = ["Unit", "Description", "Status", "Tenant", "Rent Amount"] + all_columns
             for col_num, header in enumerate(headers):
                 worksheet.write(4, col_num, header, header_format)
 
@@ -454,7 +481,7 @@ class Property(models.Model):
             worksheet.set_column(2, 2, 12)  # Status
             worksheet.set_column(3, 3, 25)  # Tenant
             worksheet.set_column(4, 4, 15)  # Rent Amount
-            for i in range(len(invoice_columns)):
+            for i in range(len(all_columns)):
                 worksheet.set_column(5 + i, 5 + i, 15)
 
             row_num = 5
@@ -475,7 +502,7 @@ class Property(models.Model):
                     worksheet.write(row_num, 3, "", cell_format)
                     worksheet.write(row_num, 4, "", cell_format)
                 
-                for i, col in enumerate(invoice_columns):
+                for i, col in enumerate(all_columns):
                     amt = data['line_amounts'].get(col, 0.0)
                     worksheet.write_number(row_num, 5 + i, amt, num_cell_format)
                         
