@@ -385,17 +385,18 @@ class Property(models.Model):
             ], limit=1)
 
             invoice_columns = ['Expected Rent', 'House Deposit', 'Water Deposit', 'Elec Deposit', 'Water', 'Garbage']
-            line_mapping = {
-                'Monthly Rent': 'Expected Rent',
-                '[HSE_DPO] House Deposit': 'House Deposit',
-                '[WTR_DPO] Water Deposit': 'Water Deposit',
-                '[ELEC_DPO] Electricity Deposit': 'Elec Deposit',
-                '[GRB_SRV] Garbage Collection': 'Garbage',
-                '[WATER_SRV_TENANT] Water Service': 'Water'
-            }
-            
+            # Map unique keywords found in account.move.line names to statement columns
+            keyword_mapping = [
+                ('Monthly Rent', 'Expected Rent'),
+                ('HSE_DPO', 'House Deposit'),
+                ('WTR_DPO', 'Water Deposit'),
+                ('ELEC_DPO', 'Elec Deposit'),
+                ('WATER_SRV_TENANT', 'Water'),
+                ('GRB_SRV', 'Garbage'),
+            ]
+
             property_contract_data = []
-            
+
             for property in rec.property_ids:
                 active_contracts = []
                 for contract in property.rent_contract_ids:
@@ -403,28 +404,31 @@ class Property(models.Model):
                     c_end = contract.rent_date_to
                     if c_start <= end_date and (not c_end or c_end >= start_date):
                         active_contracts.append(contract)
-                
+
                 if active_contracts:
                     for contract in active_contracts:
                         contract_amounts = {col: 0.0 for col in invoice_columns}
                         if journal:
-                            invoices = self.env['account.move'].search([
-                                ('move_type', '=', 'out_invoice'),
-                                ('partner_id', '=', contract.tenant_id.id),
-                                ('invoice_date', '>=', start_date),
-                                ('invoice_date', '<=', end_date),
-                                ('state', '!=', 'cancel'),
+                            # Query journal items (account.move.line) directly
+                            lines = self.env['account.move.line'].search([
                                 ('journal_id', '=', journal.id),
-                                ('company_id', '=', rec.company_id.id)
+                                ('partner_id', '=', contract.tenant_id.id),
+                                ('date', '>=', start_date),
+                                ('date', '<=', end_date),
+                                ('move_id.state', '=', 'posted'),
+                                ('move_id.move_type', '=', 'out_invoice'),
+                                ('company_id', '=', rec.company_id.id),
                             ])
-                            
-                            for inv in invoices:
-                                for line in inv.invoice_line_ids:
-                                    if not line.display_type and line.name:
-                                        mapped_col = line_mapping.get(line.name.strip())
-                                        if mapped_col:
-                                            contract_amounts[mapped_col] += line.price_unit
-                        
+
+                            for line in lines:
+                                if not line.name or line.display_type in ('line_section', 'line_note', 'tax', 'payment_term'):
+                                    continue
+                                line_name = line.name.strip()
+                                for keyword, col in keyword_mapping:
+                                    if keyword in line_name:
+                                        contract_amounts[col] += line.credit
+                                        break
+
                         property_contract_data.append({
                             'property': property,
                             'contract': contract,
