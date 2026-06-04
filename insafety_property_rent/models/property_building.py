@@ -455,7 +455,11 @@ class Property(models.Model):
                                 ('debit', '>', 0),
                                 ('company_id', '=', rec.company_id.id),
                             ])
-                            for pline in payment_lines:
+                            # Filter to only lines within the period (extra safety)
+                            filtered_lines = payment_lines.filtered(
+                                lambda l: start_date <= l.date <= end_date
+                            )
+                            for pline in filtered_lines:
                                 payment_total += pline.debit
 
                         contract_amounts['Payment'] = payment_total
