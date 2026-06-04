@@ -420,8 +420,8 @@ class Property(models.Model):
                             
                             for inv in invoices:
                                 for line in inv.invoice_line_ids:
-                                    if not line.display_type and line.product.name:
-                                        mapped_col = line_mapping.get(line.product.name)
+                                    if not line.display_type and line.name:
+                                        mapped_col = line_mapping.get(line.name.strip())
                                         if mapped_col:
                                             contract_amounts[mapped_col] += line.price_unit
                         
