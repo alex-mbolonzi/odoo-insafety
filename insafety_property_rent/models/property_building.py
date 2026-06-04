@@ -423,7 +423,7 @@ class Property(models.Model):
                                     if not line.display_type and line.name:
                                         mapped_col = line_mapping.get(line.name)
                                         if mapped_col:
-                                            contract_amounts[mapped_col] += line.price_total
+                                            contract_amounts[mapped_col] += line.price_unit
                         
                         property_contract_data.append({
                             'property': property,
