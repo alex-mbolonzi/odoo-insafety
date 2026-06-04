@@ -449,31 +449,13 @@ class Property(models.Model):
                                 ('journal_id', 'in', payment_journals.ids),
                                 ('partner_id', '=', contract.tenant_id.id),
                                 ('account_id', '=', outstanding_receipts_account.id),
+                                ('date', '>=', start_date),
+                                ('date', '<=', end_date),
                                 ('move_id.state', '=', 'posted'),
                                 ('debit', '>', 0),
                                 ('company_id', '=', rec.company_id.id),
                             ])
                             for pline in payment_lines:
-                                import logging
-                                _logger = logging.getLogger(__name__)
-                                # Bank statement imports set date to the processing date,
-                                # not the actual transaction date. Use move name year as filter.
-                                move_name = pline.move_id.name or ''
-                                line_year = None
-                                parts = move_name.split('/')
-                                if len(parts) >= 2:
-                                    try:
-                                        line_year = int(parts[1])
-                                    except ValueError:
-                                        pass
-                                if line_year and (line_year < start_date.year or line_year > end_date.year):
-                                    continue
-                                if line_year == start_date.year and pline.date and pline.date < start_date:
-                                    continue
-                                if line_year == end_date.year and pline.date and pline.date > end_date:
-                                    continue
-                                _logger.info("Payment line: move=%s, date=%s, debit=%s, partner=%s",
-                                             move_name, pline.date, pline.debit, pline.partner_id.name)
                                 payment_total += pline.debit
 
                         contract_amounts['Payment'] = payment_total
