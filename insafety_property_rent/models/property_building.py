@@ -378,8 +378,56 @@ class Property(models.Model):
             worksheet.write(1, 0, f"Period: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}", meta_format)
             worksheet.write(2, 0, f"Generated on: {fields.Date.today().strftime('%Y-%m-%d')}", meta_format)
 
+            # Pre-collect active contracts and their analytic lines to determine the columns
+            property_contract_data = []
+            unique_line_names = []
+            
+            for property in rec.property_ids:
+                active_contracts = []
+                for contract in property.rent_contract_ids:
+                    c_start = contract.rent_date_from
+                    c_end = contract.rent_date_to
+                    if c_start <= end_date and (not c_end or c_end >= start_date):
+                        active_contracts.append(contract)
+                
+                if active_contracts:
+                    for contract in active_contracts:
+                        contract_line_amounts = {}
+                        
+                        if rec.analytic_account_ids:
+                            # Use the first analytic account to avoid duplication if building has multiple
+                            analytic_account_id = rec.analytic_account_ids[0].id
+                            
+                            analytic_lines = self.env['account.analytic.line'].search([
+                                ('date', '>=', start_date),
+                                ('date', '<=', end_date),
+                                ('partner_id', '=', contract.tenant_id.id),
+                                ('account_id', '=', analytic_account_id),
+                                ('company_id', '=', rec.company_id.id)
+                            ])
+                            
+                            for line in analytic_lines:
+                                name = line.name or 'Unknown'
+                                if name not in unique_line_names:
+                                    unique_line_names.append(name)
+                                contract_line_amounts[name] = contract_line_amounts.get(name, 0.0) + line.amount
+                        
+                        property_contract_data.append({
+                            'property': property,
+                            'contract': contract,
+                            'status': 'Occupied',
+                            'line_amounts': contract_line_amounts
+                        })
+                else:
+                    property_contract_data.append({
+                        'property': property,
+                        'contract': None,
+                        'status': 'Vacant',
+                        'line_amounts': {}
+                    })
+
             # Headers
-            headers = ["Unit", "Description", "Status", "Tenant", "Rent Amount"]
+            headers = ["Unit", "Description", "Status", "Tenant", "Rent Amount"] + unique_line_names
             for col_num, header in enumerate(headers):
                 worksheet.write(4, col_num, header, header_format)
 
@@ -389,35 +437,37 @@ class Property(models.Model):
             worksheet.set_column(2, 2, 12)  # Status
             worksheet.set_column(3, 3, 25)  # Tenant
             worksheet.set_column(4, 4, 15)  # Rent Amount
+            for i in range(len(unique_line_names)):
+                worksheet.set_column(5 + i, 5 + i, 20)
 
             row_num = 5
-            for property in rec.property_ids:
-                active_contracts = []
-                for contract in property.rent_contract_ids:
-                    c_start = contract.rent_date_from
-                    c_end = contract.rent_date_to
-                    if c_start <= end_date and (not c_end or c_end >= start_date):
-                        active_contracts.append(contract)
-
+            for data in property_contract_data:
+                property = data['property']
                 desc = property.description or ""
-                if active_contracts:
-                    for contract in active_contracts:
-                        tenant_name = contract.tenant_id.name or "Unknown Tenant"
-                        rent_amount = contract.monthly_rent
-                        
-                        worksheet.write(row_num, 0, property.name, cell_format)
-                        worksheet.write(row_num, 1, desc, cell_format)
-                        worksheet.write(row_num, 2, "Occupied", cell_format)
-                        worksheet.write(row_num, 3, tenant_name, cell_format)
-                        worksheet.write_number(row_num, 4, rent_amount, num_cell_format)
-                        row_num += 1
+                worksheet.write(row_num, 0, property.name, cell_format)
+                worksheet.write(row_num, 1, desc, cell_format)
+                worksheet.write(row_num, 2, data['status'], cell_format)
+                
+                if data['contract']:
+                    contract = data['contract']
+                    tenant_name = contract.tenant_id.name or "Unknown Tenant"
+                    rent_amount = contract.monthly_rent
+                    worksheet.write(row_num, 3, tenant_name, cell_format)
+                    worksheet.write_number(row_num, 4, rent_amount, num_cell_format)
+                    
+                    for i, line_name in enumerate(unique_line_names):
+                        amt = data['line_amounts'].get(line_name, 0.0)
+                        if amt:
+                            worksheet.write_number(row_num, 5 + i, amt, num_cell_format)
+                        else:
+                            worksheet.write(row_num, 5 + i, "", cell_format)
                 else:
-                    worksheet.write(row_num, 0, property.name, cell_format)
-                    worksheet.write(row_num, 1, desc, cell_format)
-                    worksheet.write(row_num, 2, "Vacant", cell_format)
                     worksheet.write(row_num, 3, "", cell_format)
                     worksheet.write(row_num, 4, "", cell_format)
-                    row_num += 1
+                    for i in range(len(unique_line_names)):
+                        worksheet.write(row_num, 5 + i, "", cell_format)
+                        
+                row_num += 1
 
             workbook.close()
             output.seek(0)
