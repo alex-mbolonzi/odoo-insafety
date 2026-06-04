@@ -449,17 +449,17 @@ class Property(models.Model):
                                 ('journal_id', 'in', payment_journals.ids),
                                 ('partner_id', '=', contract.tenant_id.id),
                                 ('account_id', '=', outstanding_receipts_account.id),
-                                ('date', '>=', datetime.strptime(start_date, '%Y-%m-%d').date()),
-                                ('date', '<=', datetime.strptime(end_date, '%Y-%m-%d').date()),
+                                ('date', '>=', start_date),
+                                ('date', '<=', end_date),
                                 ('move_id.state', '=', 'posted'),
                                 ('debit', '>', 0),
                                 ('company_id', '=', rec.company_id.id),
                             ])
                             # Filter to only lines within the period (extra safety)
-                            # filtered_lines = payment_lines.filtered(
-                            #     lambda l: start_date <= l.move_id.date <= end_date
-                            # )
-                            for pline in payment_lines:
+                            filtered_lines = payment_lines.filtered(
+                                lambda l: l.date and start_date <= l.date <= end_date
+                            )
+                            for pline in filtered_lines:
                                 payment_total += pline.debit
 
                         contract_amounts['Payment'] = payment_total
