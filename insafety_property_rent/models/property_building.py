@@ -437,19 +437,19 @@ class Property(models.Model):
                                         contract_amounts[col] += line.credit
                                         break
 
-                        # Query payments via account.payment model for accurate amounts
+                        # Query payment journal items - sum debit across all 3 bank journals
                         if payment_journals:
-                            payments = self.env['account.payment'].search([
+                            payment_lines = self.env['account.move.line'].search([
                                 ('journal_id', 'in', payment_journals.ids),
                                 ('partner_id', '=', contract.tenant_id.id),
-                                ('payment_type', '=', 'inbound'),
                                 ('date', '>=', start_date),
                                 ('date', '<=', end_date),
-                                ('state', 'in', ['posted', 'reconciled']),
+                                ('move_id.state', '=', 'posted'),
+                                ('debit', '>', 0),
                                 ('company_id', '=', rec.company_id.id),
                             ])
-                            for payment in payments:
-                                payment_total += payment.amount
+                            for pline in payment_lines:
+                                payment_total += pline.debit
 
                         contract_amounts['Payment'] = payment_total
 
