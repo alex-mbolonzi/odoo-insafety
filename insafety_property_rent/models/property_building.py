@@ -391,6 +391,12 @@ class Property(models.Model):
                 ('code', 'in', ['PBNK1', 'LLDP', 'BNK2']),
             ])
 
+            # Outstanding receipts account used to identify actual payment lines
+            outstanding_receipts_account = self.env['account.account'].search([
+                ('code', '=', '120003'),
+                ('company_id', '=', rec.company_id.id),
+            ], limit=1)
+
             invoice_columns = ['Expected Rent', 'House Deposit', 'Water Deposit', 'Elec Deposit', 'Water', 'Garbage']
             # Map unique keywords found in account.move.line names to statement columns
             keyword_mapping = [
@@ -438,10 +444,11 @@ class Property(models.Model):
                                         break
 
                         # Query payment journal items - sum debit across all 3 bank journals
-                        if payment_journals:
+                        if payment_journals and outstanding_receipts_account:
                             payment_lines = self.env['account.move.line'].search([
                                 ('journal_id', 'in', payment_journals.ids),
                                 ('partner_id', '=', contract.tenant_id.id),
+                                ('account_id', '=', outstanding_receipts_account.id),
                                 ('date', '>=', start_date),
                                 ('date', '<=', end_date),
                                 ('move_id.state', '=', 'posted'),
