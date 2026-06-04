@@ -394,7 +394,7 @@ class Property(models.Model):
             # Outstanding receipts account used to identify actual payment lines
             outstanding_receipts_account = self.env['account.account'].search([
                 ('code', '=', '120003'),
-                ('company_id', '=', rec.company_id.id),
+                ('company_ids', 'in', [rec.company_id.id]),
             ], limit=1)
 
             invoice_columns = ['Expected Rent', 'House Deposit', 'Water Deposit', 'Elec Deposit', 'Water', 'Garbage']
