@@ -378,8 +378,69 @@ class Property(models.Model):
             worksheet.write(1, 0, f"Period: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}", meta_format)
             worksheet.write(2, 0, f"Generated on: {fields.Date.today().strftime('%Y-%m-%d')}", meta_format)
 
+            journal = self.env['account.journal'].search([
+                ('type', '=', 'sale'),
+                ('company_id', '=', rec.company_id.id),
+                ('code', '=', 'TIJ'),
+            ], limit=1)
+
+            invoice_columns = ['Expected Rent', 'House Deposit', 'Water Deposit', 'Elec Deposit', 'Water', 'Garbage']
+            line_mapping = {
+                'Monthly Rent': 'Expected Rent',
+                '[HSE_DPO] House Deposit': 'House Deposit',
+                '[WTR_DPO] Water Deposit': 'Water Deposit',
+                '[ELEC_DPO] Electricity Deposit': 'Elec Deposit',
+                '[GRB_SRV] Garbage Collection': 'Garbage',
+                '[WATER_SRV_TENANT] Water Service': 'Water'
+            }
+            
+            property_contract_data = []
+            
+            for property in rec.property_ids:
+                active_contracts = []
+                for contract in property.rent_contract_ids:
+                    c_start = contract.rent_date_from
+                    c_end = contract.rent_date_to
+                    if c_start <= end_date and (not c_end or c_end >= start_date):
+                        active_contracts.append(contract)
+                
+                if active_contracts:
+                    for contract in active_contracts:
+                        contract_amounts = {col: 0.0 for col in invoice_columns}
+                        if journal:
+                            invoices = self.env['account.move'].search([
+                                ('move_type', '=', 'out_invoice'),
+                                ('partner_id', '=', contract.tenant_id.id),
+                                ('invoice_date', '>=', start_date),
+                                ('invoice_date', '<=', end_date),
+                                ('state', '!=', 'cancel'),
+                                ('journal_id', '=', journal.id),
+                                ('company_id', '=', rec.company_id.id)
+                            ])
+                            
+                            for inv in invoices:
+                                for line in inv.invoice_line_ids:
+                                    if not line.display_type and line.name:
+                                        mapped_col = line_mapping.get(line.name)
+                                        if mapped_col:
+                                            contract_amounts[mapped_col] += line.price_total
+                        
+                        property_contract_data.append({
+                            'property': property,
+                            'contract': contract,
+                            'status': 'Occupied',
+                            'line_amounts': contract_amounts
+                        })
+                else:
+                    property_contract_data.append({
+                        'property': property,
+                        'contract': None,
+                        'status': 'Vacant',
+                        'line_amounts': {col: 0.0 for col in invoice_columns}
+                    })
+
             # Headers
-            headers = ["Unit", "Description", "Status", "Tenant", "Rent Amount"]
+            headers = ["Unit", "Description", "Status", "Tenant", "Rent Amount"] + invoice_columns
             for col_num, header in enumerate(headers):
                 worksheet.write(4, col_num, header, header_format)
 
@@ -389,35 +450,32 @@ class Property(models.Model):
             worksheet.set_column(2, 2, 12)  # Status
             worksheet.set_column(3, 3, 25)  # Tenant
             worksheet.set_column(4, 4, 15)  # Rent Amount
+            for i in range(len(invoice_columns)):
+                worksheet.set_column(5 + i, 5 + i, 15)
 
             row_num = 5
-            for property in rec.property_ids:
-                active_contracts = []
-                for contract in property.rent_contract_ids:
-                    c_start = contract.rent_date_from
-                    c_end = contract.rent_date_to
-                    if c_start <= end_date and (not c_end or c_end >= start_date):
-                        active_contracts.append(contract)
-
+            for data in property_contract_data:
+                property = data['property']
                 desc = property.description or ""
-                if active_contracts:
-                    for contract in active_contracts:
-                        tenant_name = contract.tenant_id.name or "Unknown Tenant"
-                        rent_amount = contract.monthly_rent
-                        
-                        worksheet.write(row_num, 0, property.name, cell_format)
-                        worksheet.write(row_num, 1, desc, cell_format)
-                        worksheet.write(row_num, 2, "Occupied", cell_format)
-                        worksheet.write(row_num, 3, tenant_name, cell_format)
-                        worksheet.write_number(row_num, 4, rent_amount, num_cell_format)
-                        row_num += 1
+                worksheet.write(row_num, 0, property.name, cell_format)
+                worksheet.write(row_num, 1, desc, cell_format)
+                worksheet.write(row_num, 2, data['status'], cell_format)
+                
+                if data['contract']:
+                    contract = data['contract']
+                    tenant_name = contract.tenant_id.name or "Unknown Tenant"
+                    rent_amount = contract.monthly_rent
+                    worksheet.write(row_num, 3, tenant_name, cell_format)
+                    worksheet.write_number(row_num, 4, rent_amount, num_cell_format)
                 else:
-                    worksheet.write(row_num, 0, property.name, cell_format)
-                    worksheet.write(row_num, 1, desc, cell_format)
-                    worksheet.write(row_num, 2, "Vacant", cell_format)
                     worksheet.write(row_num, 3, "", cell_format)
                     worksheet.write(row_num, 4, "", cell_format)
-                    row_num += 1
+                
+                for i, col in enumerate(invoice_columns):
+                    amt = data['line_amounts'].get(col, 0.0)
+                    worksheet.write_number(row_num, 5 + i, amt, num_cell_format)
+                        
+                row_num += 1
 
             workbook.close()
             output.seek(0)
