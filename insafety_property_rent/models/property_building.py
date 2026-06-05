@@ -388,7 +388,7 @@ class Property(models.Model):
             payment_journals = self.env['account.journal'].search([
                 ('type', '=', 'bank'),
                 ('company_id', '=', rec.company_id.id),
-                ('code', 'in', ['PBNK1']),
+                ('code', 'in', ['PBNK1','LLDP','BNK2']),
             ])
 
             # Outstanding receipts account used to identify actual payment lines
@@ -444,16 +444,30 @@ class Property(models.Model):
                                         contract_amounts[col] += line.credit
                                         break
 
-                            # Opening balance: total invoiced - total reconciled before the period
-                            prior_lines = self.env['account.move.line'].search([
+                            # Opening balance: total invoiced (TIJ credits) - total paid (bank journal debits) before the period
+                            prior_invoiced = self.env['account.move.line'].search([
                                 ('journal_id', '=', journal.id),
                                 ('partner_id', '=', contract.tenant_id.id),
                                 ('date', '<', start_date),
                                 ('move_id.state', '=', 'posted'),
                                 ('company_id', '=', rec.company_id.id),
                             ])
-                            for pl in prior_lines:
-                                opening_balance += pl.credit - pl.debit
+                            total_invoiced = sum(prior_invoiced.mapped('credit'))
+
+                            prior_payments = 0.0
+                            if payment_journals and outstanding_receipts_account:
+                                prior_pay_lines = self.env['account.move.line'].search([
+                                    ('journal_id', 'in', payment_journals.ids),
+                                    ('partner_id', '=', contract.tenant_id.id),
+                                    ('account_id', '=', outstanding_receipts_account.id),
+                                    ('date', '<', start_date),
+                                    ('move_id.state', '=', 'posted'),
+                                    ('debit', '>', 0),
+                                    ('company_id', '=', rec.company_id.id),
+                                ])
+                                prior_payments = sum(prior_pay_lines.mapped('debit'))
+
+                            opening_balance = total_invoiced - prior_payments
 
                         # Query payment journal items - sum debit across all 3 bank journals
                         if payment_journals and outstanding_receipts_account:
