@@ -378,11 +378,12 @@ class Property(models.Model):
             worksheet.write(1, 0, f"Period: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}", meta_format)
             worksheet.write(2, 0, f"Generated on: {fields.Date.today().strftime('%Y-%m-%d')}", meta_format)
 
-            journal = self.env['account.journal'].search([
+            # Invoice journals - tenant invoices may be in either TIJ or INV
+            invoice_journals = self.env['account.journal'].search([
                 ('type', '=', 'sale'),
                 ('company_id', '=', rec.company_id.id),
-                ('code', '=', 'TIJ'),
-            ], limit=1)
+                ('code', 'in', ['TIJ', 'INV']),
+            ])
 
             # Payment journals - tenant payments may come from any of these banks
             payment_journals = self.env['account.journal'].search([
@@ -423,10 +424,10 @@ class Property(models.Model):
                         contract_amounts = {col: 0.0 for col in invoice_columns}
                         payment_total = 0.0
                         opening_balance = 0.0
-                        if journal:
+                        if invoice_journals:
                             # Query invoice journal items directly
                             lines = self.env['account.move.line'].search([
-                                ('journal_id', '=', journal.id),
+                                ('journal_id', 'in', invoice_journals.ids),
                                 ('partner_id', '=', contract.tenant_id.id),
                                 ('date', '>=', start_date),
                                 ('date', '<=', end_date),
@@ -444,9 +445,9 @@ class Property(models.Model):
                                         contract_amounts[col] += line.credit
                                         break
 
-                            # Opening balance: total invoiced (TIJ credits) - total paid (bank journal debits) before the period
+                            # Opening balance: total invoiced (TIJ+INV credits) - total paid (bank journal debits) before the period
                             prior_invoiced = self.env['account.move.line'].search([
-                                ('journal_id', '=', journal.id),
+                                ('journal_id', 'in', invoice_journals.ids),
                                 ('partner_id', '=', contract.tenant_id.id),
                                 ('date', '<', start_date),
                                 ('move_id.state', '=', 'posted'),
