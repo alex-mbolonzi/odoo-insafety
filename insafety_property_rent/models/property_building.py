@@ -452,7 +452,10 @@ class Property(models.Model):
                                 ('move_id.state', '=', 'posted'),
                                 ('company_id', '=', rec.company_id.id),
                             ])
-                            total_invoiced = sum(prior_invoiced.mapped('credit'))
+                            filtered_invoiced = prior_invoiced.filtered(
+                                lambda l: l.date and l.date < start_date
+                            )
+                            total_invoiced = sum(filtered_invoiced.mapped('credit'))
 
                             prior_payments = 0.0
                             if payment_journals and outstanding_receipts_account:
@@ -465,7 +468,10 @@ class Property(models.Model):
                                     ('debit', '>', 0),
                                     ('company_id', '=', rec.company_id.id),
                                 ])
-                                prior_payments = sum(prior_pay_lines.mapped('debit'))
+                                filtered_prior_pay = prior_pay_lines.filtered(
+                                    lambda l: l.date and l.date < start_date
+                                )
+                                prior_payments = sum(filtered_prior_pay.mapped('debit'))
 
                             opening_balance = total_invoiced - prior_payments
 
