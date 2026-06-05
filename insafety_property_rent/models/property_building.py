@@ -422,6 +422,7 @@ class Property(models.Model):
                     for contract in active_contracts:
                         contract_amounts = {col: 0.0 for col in invoice_columns}
                         payment_total = 0.0
+                        opening_balance = 0.0
                         if journal:
                             # Query invoice journal items directly
                             lines = self.env['account.move.line'].search([
@@ -443,6 +444,17 @@ class Property(models.Model):
                                         contract_amounts[col] += line.credit
                                         break
 
+                            # Opening balance: total invoiced - total reconciled before the period
+                            prior_lines = self.env['account.move.line'].search([
+                                ('journal_id', '=', journal.id),
+                                ('partner_id', '=', contract.tenant_id.id),
+                                ('date', '<', start_date),
+                                ('move_id.state', '=', 'posted'),
+                                ('company_id', '=', rec.company_id.id),
+                            ])
+                            for pl in prior_lines:
+                                opening_balance += pl.credit - pl.debit
+
                         # Query payment journal items - sum debit across all 3 bank journals
                         if payment_journals and outstanding_receipts_account:
                             payment_lines = self.env['account.move.line'].search([
@@ -462,6 +474,7 @@ class Property(models.Model):
                             for pline in filtered_lines:
                                 payment_total += pline.debit
 
+                        contract_amounts['Opening Bal'] = opening_balance
                         contract_amounts['Payment'] = payment_total
 
                         property_contract_data.append({
@@ -472,6 +485,7 @@ class Property(models.Model):
                         })
                 else:
                     vacant_amounts = {col: 0.0 for col in invoice_columns}
+                    vacant_amounts['Opening Bal'] = 0.0
                     vacant_amounts['Payment'] = 0.0
                     property_contract_data.append({
                         'property': property,
@@ -481,7 +495,7 @@ class Property(models.Model):
                     })
 
             # Headers
-            all_columns = invoice_columns + ['Payment']
+            all_columns = invoice_columns + ['Opening Bal', 'Payment']
             headers = ["Unit", "Description", "Status", "Tenant", "Rent Amount"] + all_columns
             for col_num, header in enumerate(headers):
                 worksheet.write(4, col_num, header, header_format)
