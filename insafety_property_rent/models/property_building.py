@@ -490,12 +490,12 @@ class Property(models.Model):
                             opening_balance = total_invoiced - prior_payments
 
                             # Add OPB journal net balance (debit = owes, credit = has credit)
+                            # OPB entries are opening balances - no date filter needed
                             opb_net = 0.0
                             if opb_journal:
                                 opb_lines = self.env['account.move.line'].search([
                                     ('journal_id', '=', opb_journal.id),
                                     ('partner_id', '=', contract.tenant_id.id),
-                                    ('date', '<', start_date),
                                     ('move_id.state', '=', 'posted'),
                                     ('company_id', '=', rec.company_id.id),
                                 ])
