@@ -398,6 +398,13 @@ class Property(models.Model):
                 ('company_ids', 'in', [rec.company_id.id]),
             ], limit=1)
 
+            # Opening balance journal - carries forward initial tenant balances
+            opb_journal = self.env['account.journal'].search([
+                ('type', '=', 'miscellaneous'),
+                ('company_id', '=', rec.company_id.id),
+                ('code', '=', 'OPB'),
+            ], limit=1)
+
             invoice_columns = ['Expected Rent', 'House Deposit', 'Water Deposit', 'Elec Deposit', 'Water', 'Garbage']
             # Map unique keywords found in account.move.line names to statement columns
             keyword_mapping = [
@@ -482,14 +489,25 @@ class Property(models.Model):
 
                             opening_balance = total_invoiced - prior_payments
 
+                            # Add OPB journal net balance (debit = owes, credit = has credit)
+                            opb_net = 0.0
+                            if opb_journal:
+                                opb_lines = self.env['account.move.line'].search([
+                                    ('journal_id', '=', opb_journal.id),
+                                    ('partner_id', '=', contract.tenant_id.id),
+                                    ('date', '<', start_date),
+                                    ('move_id.state', '=', 'posted'),
+                                    ('company_id', '=', rec.company_id.id),
+                                ])
+                                opb_net = sum(opb_lines.mapped('debit')) - sum(opb_lines.mapped('credit'))
+                                opening_balance += opb_net
+
                             import logging
                             _logger = logging.getLogger(__name__)
                             _logger.info(
-                                "Opening Bal tenant=%s: invoiced=%.2f (%d lines), paid=%.2f (%d domain/%d filtered), balance=%.2f, period_start=%s",
-                                contract.tenant_id.name, total_invoiced, len(prior_invoiced),
-                                prior_payments, len(prior_pay_lines) if prior_pay_lines else 0,
-                                len(filtered_prior_pay) if filtered_prior_pay else 0,
-                                opening_balance, start_date
+                                "Opening Bal tenant=%s: invoiced=%.2f, paid=%.2f, opb_net=%.2f, balance=%.2f, period_start=%s",
+                                contract.tenant_id.name, total_invoiced, prior_payments,
+                                opb_net, opening_balance, start_date
                             )
 
                         # Query payment journal items - sum debit across all 3 bank journals
