@@ -481,6 +481,16 @@ class Property(models.Model):
 
                             opening_balance = total_invoiced - prior_payments
 
+                            import logging
+                            _logger = logging.getLogger(__name__)
+                            _logger.info(
+                                "Opening Bal tenant=%s: invoiced=%.2f (%d lines), paid=%.2f (%d domain/%d filtered), balance=%.2f, period_start=%s",
+                                contract.tenant_id.name, total_invoiced, len(prior_invoiced),
+                                prior_payments, len(prior_pay_lines) if prior_pay_lines else 0,
+                                len(filtered_prior_pay) if filtered_prior_pay else 0,
+                                opening_balance, start_date
+                            )
+
                         # Query payment journal items - sum debit across all 3 bank journals
                         if payment_journals and outstanding_receipts_account:
                             payment_lines = self.env['account.move.line'].search([
