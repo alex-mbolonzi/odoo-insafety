@@ -400,10 +400,13 @@ class Property(models.Model):
 
             # Opening balance journal - carries forward initial tenant balances
             opb_journal = self.env['account.journal'].search([
-                ('type', '=', 'miscellaneous'),
                 ('company_id', '=', rec.company_id.id),
                 ('code', '=', 'OPB'),
             ], limit=1)
+
+            import logging
+            _logger = logging.getLogger(__name__)
+            _logger.info("OPB journal found: %s (id=%s)", opb_journal.name if opb_journal else 'NOT FOUND', opb_journal.id if opb_journal else 0)
 
             invoice_columns = ['Expected Rent', 'House Deposit', 'Water Deposit', 'Elec Deposit', 'Water', 'Garbage']
             # Map unique keywords found in account.move.line names to statement columns
@@ -501,6 +504,11 @@ class Property(models.Model):
                                 ])
                                 opb_net = sum(opb_lines.mapped('debit')) - sum(opb_lines.mapped('credit'))
                                 opening_balance += opb_net
+                                if opb_lines:
+                                    _logger.info("OPB lines tenant=%s: %d lines, debit=%.2f, credit=%.2f, net=%.2f",
+                                                 contract.tenant_id.name, len(opb_lines),
+                                                 sum(opb_lines.mapped('debit')),
+                                                 sum(opb_lines.mapped('credit')), opb_net)
 
                             import logging
                             _logger = logging.getLogger(__name__)
