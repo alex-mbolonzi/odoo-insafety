@@ -452,10 +452,16 @@ class Property(models.Model):
                                 ('move_id.state', '=', 'posted'),
                                 ('company_id', '=', rec.company_id.id),
                             ])
-                            filtered_invoiced = prior_invoiced.filtered(
-                                lambda l: l.date and l.date < start_date
-                            )
-                            total_invoiced = sum(filtered_invoiced.mapped('credit'))
+                            # Only sum credits from actual product lines matching the invoice columns
+                            total_invoiced = 0.0
+                            for pl in prior_invoiced:
+                                if not pl.date or pl.date >= start_date:
+                                    continue
+                                if not pl.name or pl.display_type in ('line_section', 'line_note', 'tax', 'payment_term'):
+                                    continue
+                                line_name = pl.name.strip()
+                                if any(kw in line_name for kw, _ in keyword_mapping):
+                                    total_invoiced += pl.credit
 
                             prior_payments = 0.0
                             if payment_journals and outstanding_receipts_account:
