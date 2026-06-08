@@ -732,12 +732,12 @@ class Property(models.Model):
             total_deductions = commission_amount + total_expenses
             worksheet.write(deduct_row, 3, "Total Deductions", summary_bold_fmt)
             worksheet.write_number(deduct_row, 4, total_deductions, summary_bold_num_fmt)
-            deduct_row += 1
 
-            # Net row
+            # Payable to Landlord - after both totals
+            net_row = max(income_end_row, deduct_row) + 1
             net_amount = total_income - total_deductions
-            worksheet.write(deduct_row, 0, "NET", summary_bold_fmt)
-            worksheet.write_number(deduct_row, 1, net_amount, summary_bold_num_fmt)
+            worksheet.merge_range(net_row, 0, net_row, 2, "Payable to Landlord", summary_bold_fmt)
+            worksheet.write_number(net_row, 3, net_amount, summary_bold_num_fmt)
 
             workbook.close()
             output.seek(0)
