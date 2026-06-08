@@ -454,68 +454,70 @@ class Property(models.Model):
                                         contract_amounts[col] += line.credit
                                         break
 
-                            # Opening balance: total invoiced (TIJ+INV credits) - total paid (bank journal debits) before the period
-                            prior_invoiced = self.env['account.move.line'].search([
-                                ('journal_id', 'in', invoice_journals.ids),
-                                ('partner_id', '=', contract.tenant_id.id),
-                                ('date', '<', start_date),
-                                ('move_id.state', '=', 'posted'),
-                                ('company_id', '=', rec.company_id.id),
-                            ])
-                            # Only sum credits from actual product lines matching the invoice columns
-                            total_invoiced = 0.0
-                            for pl in prior_invoiced:
-                                if not pl.date or pl.date >= start_date:
-                                    continue
-                                if not pl.name or pl.display_type in ('line_section', 'line_note', 'tax', 'payment_term'):
-                                    continue
-                                line_name = pl.name.strip()
-                                if any(kw in line_name for kw, _ in keyword_mapping):
-                                    total_invoiced += pl.credit
-
-                            prior_payments = 0.0
-                            if payment_journals and outstanding_receipts_account:
-                                prior_pay_lines = self.env['account.move.line'].search([
-                                    ('journal_id', 'in', payment_journals.ids),
+                            # Opening balance calculation (skip for zero-rent contracts)
+                            if contract.monthly_rent != 0:
+                                prior_invoiced = self.env['account.move.line'].search([
+                                    ('journal_id', 'in', invoice_journals.ids),
                                     ('partner_id', '=', contract.tenant_id.id),
-                                    ('account_id', '=', outstanding_receipts_account.id),
                                     ('date', '<', start_date),
                                     ('move_id.state', '=', 'posted'),
-                                    ('debit', '>', 0),
                                     ('company_id', '=', rec.company_id.id),
                                 ])
-                                filtered_prior_pay = prior_pay_lines.filtered(
-                                    lambda l: l.date and l.date < start_date
+                                # Sum all product-line credits (including rent) for opening balance
+                                opening_balance_keywords = ['Monthly Rent', 'HSE_DPO', 'WTR_DPO', 'ELEC_DPO', 'WATER_SRV_TENANT', 'GRB_SRV']
+                                total_invoiced = 0.0
+                                for pl in prior_invoiced:
+                                    if not pl.date or pl.date >= start_date:
+                                        continue
+                                    if not pl.name or pl.display_type in ('line_section', 'line_note', 'tax', 'payment_term'):
+                                        continue
+                                    line_name = pl.name.strip()
+                                    if any(kw in line_name for kw in opening_balance_keywords):
+                                        total_invoiced += pl.credit
+
+                                prior_payments = 0.0
+                                if payment_journals and outstanding_receipts_account:
+                                    prior_pay_lines = self.env['account.move.line'].search([
+                                        ('journal_id', 'in', payment_journals.ids),
+                                        ('partner_id', '=', contract.tenant_id.id),
+                                        ('account_id', '=', outstanding_receipts_account.id),
+                                        ('date', '<', start_date),
+                                        ('move_id.state', '=', 'posted'),
+                                        ('debit', '>', 0),
+                                        ('company_id', '=', rec.company_id.id),
+                                    ])
+                                    filtered_prior_pay = prior_pay_lines.filtered(
+                                        lambda l: l.date and l.date < start_date
+                                    )
+                                    prior_payments = sum(filtered_prior_pay.mapped('debit'))
+
+                                opening_balance = total_invoiced - prior_payments
+
+                                # Add OPB journal net balance (debit = owes, credit = has credit)
+                                # OPB entries are opening balances - no date filter needed
+                                opb_net = 0.0
+                                if opb_journal:
+                                    opb_lines = self.env['account.move.line'].search([
+                                        ('journal_id', '=', opb_journal.id),
+                                        ('partner_id', '=', contract.tenant_id.id),
+                                        ('move_id.state', '=', 'posted'),
+                                        ('company_id', '=', rec.company_id.id),
+                                    ])
+                                    opb_net = sum(opb_lines.mapped('debit')) - sum(opb_lines.mapped('credit'))
+                                    opening_balance += opb_net
+                                    if opb_lines:
+                                        _logger.info("OPB lines tenant=%s: %d lines, debit=%.2f, credit=%.2f, net=%.2f",
+                                                     contract.tenant_id.name, len(opb_lines),
+                                                     sum(opb_lines.mapped('debit')),
+                                                     sum(opb_lines.mapped('credit')), opb_net)
+
+                                import logging
+                                _logger = logging.getLogger(__name__)
+                                _logger.info(
+                                    "Opening Bal tenant=%s: invoiced=%.2f, paid=%.2f, opb_net=%.2f, balance=%.2f, period_start=%s",
+                                    contract.tenant_id.name, total_invoiced, prior_payments,
+                                    opb_net, opening_balance, start_date
                                 )
-                                prior_payments = sum(filtered_prior_pay.mapped('debit'))
-
-                            opening_balance = total_invoiced - prior_payments
-
-                            # Add OPB journal net balance (debit = owes, credit = has credit)
-                            # OPB entries are opening balances - no date filter needed
-                            opb_net = 0.0
-                            if opb_journal:
-                                opb_lines = self.env['account.move.line'].search([
-                                    ('journal_id', '=', opb_journal.id),
-                                    ('partner_id', '=', contract.tenant_id.id),
-                                    ('move_id.state', '=', 'posted'),
-                                    ('company_id', '=', rec.company_id.id),
-                                ])
-                                opb_net = sum(opb_lines.mapped('debit')) - sum(opb_lines.mapped('credit'))
-                                opening_balance += opb_net
-                                if opb_lines:
-                                    _logger.info("OPB lines tenant=%s: %d lines, debit=%.2f, credit=%.2f, net=%.2f",
-                                                 contract.tenant_id.name, len(opb_lines),
-                                                 sum(opb_lines.mapped('debit')),
-                                                 sum(opb_lines.mapped('credit')), opb_net)
-
-                            import logging
-                            _logger = logging.getLogger(__name__)
-                            _logger.info(
-                                "Opening Bal tenant=%s: invoiced=%.2f, paid=%.2f, opb_net=%.2f, balance=%.2f, period_start=%s",
-                                contract.tenant_id.name, total_invoiced, prior_payments,
-                                opb_net, opening_balance, start_date
-                            )
 
                         # Query payment journal items - sum debit across all 3 bank journals
                         if payment_journals and outstanding_receipts_account:
