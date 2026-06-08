@@ -644,6 +644,198 @@ class Property(models.Model):
             for col_idx, total_val in col_totals.items():
                 worksheet.write_number(row_num, col_idx, total_val, totals_format)
 
+            # --- Income and Expenses Summary Section ---
+            summary_header_fmt = workbook.add_format({
+                'bold': True, 'font_size': 12, 'border': 1,
+                'bg_color': '#4472C4', 'font_color': '#FFFFFF', 'align': 'center',
+            })
+            summary_label_fmt = workbook.add_format({
+                'border': 1, 'align': 'left', 'font_size': 11,
+            })
+            summary_num_fmt = workbook.add_format({
+                'border': 1, 'align': 'right', 'num_format': currency_format_str, 'font_size': 11,
+            })
+            summary_bold_fmt = workbook.add_format({
+                'bold': True, 'border': 1, 'align': 'left', 'font_size': 11,
+                'bg_color': '#D9E1F2',
+            })
+            summary_bold_num_fmt = workbook.add_format({
+                'bold': True, 'border': 1, 'align': 'right', 'num_format': currency_format_str,
+                'font_size': 11, 'bg_color': '#D9E1F2',
+            })
+
+            row_num += 2
+            # Section header
+            worksheet.merge_range(row_num, 0, row_num, 1, "INCOME", summary_header_fmt)
+            worksheet.merge_range(row_num, 3, row_num, 4, "DEDUCTIONS", summary_header_fmt)
+            row_num += 1
+
+            # INCOME rows
+            income_rows = [
+                ('Rent', col_totals.get(4, 0.0)),
+                ('House Deposit', col_totals.get(5, 0.0)),
+                ('Water Deposit', col_totals.get(6, 0.0)),
+                ('Electricity Deposit', col_totals.get(7, 0.0)),
+                ('Water', col_totals.get(8, 0.0)),
+            ]
+            total_income = 0.0
+            for label, amount in income_rows:
+                worksheet.write(row_num, 0, label, summary_label_fmt)
+                worksheet.write_number(row_num, 1, amount, summary_num_fmt)
+                total_income += amount
+                row_num += 1
+            # Income total
+            worksheet.write(row_num, 0, "Total Income", summary_bold_fmt)
+            worksheet.write_number(row_num, 1, total_income, summary_bold_num_fmt)
+            income_end_row = row_num
+
+            # DEDUCTIONS rows - start aligned with first income row
+            deduct_row = income_end_row - len(income_rows)
+
+            # 1. Agency Commission (admin fee % of total rent)
+            admin_fee_rate = 0.0
+            for tax in rec.cost_billing_administrative_tax_ids:
+                if 'admin' in (tax.name or '').lower():
+                    admin_fee_rate = tax.amount
+                    break
+            total_rent = col_totals.get(4, 0.0)
+            commission_amount = total_rent * admin_fee_rate / 100.0
+
+            worksheet.write(deduct_row, 3,
+                            f"Agency Commission ({admin_fee_rate:.1f}%)", summary_label_fmt)
+            worksheet.write_number(deduct_row, 4, commission_amount, summary_num_fmt)
+            deduct_row += 1
+
+            # 2. Individual expenses from expense accounts
+            total_expenses = 0.0
+            if rec.account_expense_ids:
+                expense_lines = self.env['account.move.line'].read_group(
+                    domain=[
+                        ('account_id', 'in', rec.account_expense_ids.ids),
+                        ('date', '>=', start_date),
+                        ('date', '<=', end_date),
+                        ('move_id.state', '=', 'posted'),
+                        ('company_id', '=', rec.company_id.id),
+                    ],
+                    fields=['balance:sum'],
+                    groupby=['account_id'],
+                )
+                for group in expense_lines:
+                    account_name = group['account_id'][1]
+                    amount = group['balance'] or 0.0
+                    worksheet.write(deduct_row, 3, account_name, summary_label_fmt)
+                    worksheet.write_number(deduct_row, 4, amount, summary_num_fmt)
+                    total_expenses += amount
+                    deduct_row += 1
+
+            # Deductions total
+            total_deductions = commission_amount + total_expenses
+            worksheet.write(deduct_row, 3, "Total Deductions", summary_bold_fmt)
+            worksheet.write_number(deduct_row, 4, total_deductions, summary_bold_num_fmt)
+            deduct_row += 1
+
+            # Net row
+            net_amount = total_income - total_deductions
+            worksheet.write(deduct_row, 0, "NET", summary_bold_fmt)
+            worksheet.write_number(deduct_row, 1, net_amount, summary_bold_num_fmt)
+
+            workbook.close()
+            output.seek(0)
+            
+            rec.document = base64.b64encode(output.read())
+            rec.document_name = f"Monthly_Statement_{rec.name}_{start_date.strftime('%Y-%m')}.xlsx"
+
+            # Post to chatter to keep historical records
+            attachment = self.env['ir.attachment'].create({
+                'name': rec.document_name,
+                'type': 'binary',
+                'datas': rec.document,
+                'res_model': 'insafety.property.building',
+                'res_id': rec.id,
+            })
+            rec.message_post(
+                body=f"Monthly Statement generated for period {start_date} to {end_date}.",
+                attachment_ids=[attachment.id]
+            )
+
+    @api.model
+    def _cron_generate_monthly_statements(self):
+        today = fields.Date.today()
+        # First day of this month
+        first_of_this_month = today.replace(day=1)
+        # Last day of previous month
+        end_date = first_of_this_month - timedelta(days=1)
+        # First day of previous month
+        start_date = end_date.replace(day=1)
+        
+        buildings = self.search([])
+        buildings.generate_monthly_statement(date_from=start_date, date_to=end_date)
+
+                ('Water', col_totals.get(8, 0.0)),
+            ]
+            total_income = 0.0
+            for label, amount in income_rows:
+                worksheet.write(row_num, 0, label, summary_label_fmt)
+                worksheet.write_number(row_num, 1, amount, summary_num_fmt)
+                total_income += amount
+                row_num += 1
+            # Income total
+            worksheet.write(row_num, 0, "Total Income", summary_bold_fmt)
+            worksheet.write_number(row_num, 1, total_income, summary_bold_num_fmt)
+            income_end_row = row_num
+
+            # DEDUCTIONS rows
+            # Reset to header row + 1 for deductions
+            deduct_row = income_end_row - len(income_rows)
+
+            # 1. Agency Commission (admin fee % of total rent)
+            admin_fee_rate = 0.0
+            for tax in rec.cost_billing_administrative_tax_ids:
+                if 'admin' in (tax.name or '').lower():
+                    admin_fee_rate = tax.amount
+                    break
+            total_rent = col_totals.get(4, 0.0)
+            commission_amount = total_rent * admin_fee_rate / 100.0
+
+            worksheet.write(deduct_row, 3,
+                            f"Agency Commission ({admin_fee_rate:.1f}%)", summary_label_fmt)
+            worksheet.write_number(deduct_row, 4, commission_amount, summary_num_fmt)
+            deduct_row += 1
+
+            # 2. Individual expenses from expense accounts
+            total_expenses = 0.0
+            if rec.account_expense_ids:
+                expense_lines = self.env['account.move.line'].read_group(
+                    domain=[
+                        ('account_id', 'in', rec.account_expense_ids.ids),
+                        ('date', '>=', start_date),
+                        ('date', '<=', end_date),
+                        ('move_id.state', '=', 'posted'),
+                        ('company_id', '=', rec.company_id.id),
+                    ],
+                    fields=['balance:sum'],
+                    groupby=['account_id'],
+                )
+                for group in expense_lines:
+                    account_id = group['account_id'][0]
+                    account_name = group['account_id'][1]
+                    amount = group['balance'] or 0.0
+                    worksheet.write(deduct_row, 3, account_name, summary_label_fmt)
+                    worksheet.write_number(deduct_row, 4, amount, summary_num_fmt)
+                    total_expenses += amount
+                    deduct_row += 1
+
+            # Deductions total
+            total_deductions = commission_amount + total_expenses
+            worksheet.write(deduct_row, 3, "Total Deductions", summary_bold_fmt)
+            worksheet.write_number(deduct_row, 4, total_deductions, summary_bold_num_fmt)
+            deduct_row += 1
+
+            # Net row
+            net_amount = total_income - total_deductions
+            worksheet.write(deduct_row, 0, "NET", summary_bold_fmt)
+            worksheet.write_number(deduct_row, 1, net_amount, summary_bold_num_fmt)
+
             workbook.close()
             output.seek(0)
             
