@@ -592,7 +592,7 @@ class Property(models.Model):
                     worksheet.write_number(row_num, 4, rent_amount, num_cell_format)
                 else:
                     worksheet.write(row_num, 3, "", cell_format)
-                    worksheet.write(row_num, 4, "", cell_format)
+                    worksheet.write_number(row_num, 4, 0, num_cell_format)
                 
                 for i, col in enumerate(all_columns):
                     amt = data['line_amounts'].get(col, 0.0)
