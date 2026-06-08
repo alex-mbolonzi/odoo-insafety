@@ -578,6 +578,26 @@ class Property(models.Model):
             for i in range(len(all_columns)):
                 worksheet.set_column(5 + i, 5 + i, 15)
 
+            # Bold format for totals row
+            totals_format = workbook.add_format({
+                'bold': True,
+                'border': 1,
+                'bg_color': '#D9E1F2',
+                'num_format': currency_format_str,
+                'align': 'right',
+            })
+            totals_text_format = workbook.add_format({
+                'bold': True,
+                'border': 1,
+                'bg_color': '#D9E1F2',
+                'align': 'left',
+            })
+
+            # Running totals for numerical columns (Rent Amount + all_columns)
+            col_totals = {4: 0.0}  # column index 4 = Rent Amount
+            for i in range(len(all_columns)):
+                col_totals[5 + i] = 0.0
+
             row_num = 5
             for data in property_contract_data:
                 property = data['property']
@@ -597,6 +617,7 @@ class Property(models.Model):
                     rent_amount = 0
                     worksheet.write(row_num, 3, "", cell_format)
                     worksheet.write_number(row_num, 4, 0, num_cell_format)
+                col_totals[4] += rent_amount
                 
                 # Track Total Due for Balance calculation
                 row_total_due = rent_amount
@@ -611,8 +632,17 @@ class Property(models.Model):
                     else:
                         amt = data['line_amounts'].get(col, 0.0)
                     worksheet.write_number(row_num, 5 + i, amt, num_cell_format)
+                    col_totals[5 + i] += amt
                         
                 row_num += 1
+
+            # Write totals row
+            worksheet.write(row_num, 0, "", totals_text_format)
+            worksheet.write(row_num, 1, "", totals_text_format)
+            worksheet.write(row_num, 2, "", totals_text_format)
+            worksheet.write(row_num, 3, "TOTAL", totals_text_format)
+            for col_idx, total_val in col_totals.items():
+                worksheet.write_number(row_num, col_idx, total_val, totals_format)
 
             workbook.close()
             output.seek(0)
