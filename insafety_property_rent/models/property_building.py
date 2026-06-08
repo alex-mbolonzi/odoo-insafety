@@ -736,8 +736,8 @@ class Property(models.Model):
             # Payable to Landlord - after both totals
             net_row = max(income_end_row, deduct_row) + 1
             net_amount = total_income - total_deductions
-            worksheet.merge_range(net_row, 0, net_row, 2, "Payable to Landlord", summary_bold_fmt)
-            worksheet.write_number(net_row, 3, net_amount, summary_bold_num_fmt)
+            worksheet.merge_range(net_row, 0, net_row, 3, "Payable to Landlord", summary_bold_fmt)
+            worksheet.write_number(net_row, 4, net_amount, summary_bold_num_fmt)
 
             workbook.close()
             output.seek(0)
