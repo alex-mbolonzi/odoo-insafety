@@ -408,10 +408,9 @@ class Property(models.Model):
             _logger = logging.getLogger(__name__)
             _logger.info("OPB journal found: %s (id=%s)", opb_journal.name if opb_journal else 'NOT FOUND', opb_journal.id if opb_journal else 0)
 
-            invoice_columns = ['Expected Rent', 'House Deposit', 'Water Deposit', 'Elec Deposit', 'Water', 'Garbage']
+            invoice_columns = ['House Deposit', 'Water Deposit', 'Elec Deposit', 'Water', 'Garbage']
             # Map unique keywords found in account.move.line names to statement columns
             keyword_mapping = [
-                ('Monthly Rent', 'Expected Rent'),
                 ('HSE_DPO', 'House Deposit'),
                 ('WTR_DPO', 'Water Deposit'),
                 ('ELEC_DPO', 'Elec Deposit'),
@@ -536,6 +535,11 @@ class Property(models.Model):
                             )
                             for pline in filtered_lines:
                                 payment_total += pline.debit
+
+                        # Zero out opening balance and payment for contracts with no rent
+                        if contract.monthly_rent == 0:
+                            opening_balance = 0.0
+                            payment_total = 0.0
 
                         contract_amounts['Opening Bal'] = opening_balance
                         contract_amounts['Payment'] = payment_total
