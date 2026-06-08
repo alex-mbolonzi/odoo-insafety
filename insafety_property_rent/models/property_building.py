@@ -564,7 +564,7 @@ class Property(models.Model):
                     })
 
             # Headers
-            all_columns = invoice_columns + ['Opening Bal', 'Payment']
+            all_columns = invoice_columns + ['Opening Bal', 'Total Due', 'Payment']
             headers = ["Unit", "Description", "Status", "Tenant", "Rent Amount"] + all_columns
             for col_num, header in enumerate(headers):
                 worksheet.write(4, col_num, header, header_format)
@@ -593,11 +593,20 @@ class Property(models.Model):
                     worksheet.write(row_num, 3, tenant_name, cell_format)
                     worksheet.write_number(row_num, 4, rent_amount, num_cell_format)
                 else:
+                    contract = None
+                    rent_amount = 0
                     worksheet.write(row_num, 3, "", cell_format)
                     worksheet.write_number(row_num, 4, 0, num_cell_format)
                 
                 for i, col in enumerate(all_columns):
-                    amt = data['line_amounts'].get(col, 0.0)
+                    if col == 'Total Due':
+                        # Sum: Rent Amount + House Deposit + Water Deposit + Elec Deposit + Water + Garbage + Opening Bal
+                        total_due = rent_amount
+                        for sum_col in invoice_columns + ['Opening Bal']:
+                            total_due += data['line_amounts'].get(sum_col, 0.0)
+                        amt = total_due
+                    else:
+                        amt = data['line_amounts'].get(col, 0.0)
                     worksheet.write_number(row_num, 5 + i, amt, num_cell_format)
                         
                 row_num += 1
