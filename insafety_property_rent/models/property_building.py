@@ -564,7 +564,7 @@ class Property(models.Model):
                     })
 
             # Headers
-            all_columns = invoice_columns + ['Opening Bal', 'Total Due', 'Payment']
+            all_columns = invoice_columns + ['Opening Bal', 'Total Due', 'Payment', 'Balance']
             headers = ["Unit", "Description", "Status", "Tenant", "Rent Amount"] + all_columns
             for col_num, header in enumerate(headers):
                 worksheet.write(4, col_num, header, header_format)
@@ -598,13 +598,16 @@ class Property(models.Model):
                     worksheet.write(row_num, 3, "", cell_format)
                     worksheet.write_number(row_num, 4, 0, num_cell_format)
                 
+                # Track Total Due for Balance calculation
+                row_total_due = rent_amount
+                for sum_col in invoice_columns + ['Opening Bal']:
+                    row_total_due += data['line_amounts'].get(sum_col, 0.0)
+                
                 for i, col in enumerate(all_columns):
                     if col == 'Total Due':
-                        # Sum: Rent Amount + House Deposit + Water Deposit + Elec Deposit + Water + Garbage + Opening Bal
-                        total_due = rent_amount
-                        for sum_col in invoice_columns + ['Opening Bal']:
-                            total_due += data['line_amounts'].get(sum_col, 0.0)
-                        amt = total_due
+                        amt = row_total_due
+                    elif col == 'Balance':
+                        amt = row_total_due - data['line_amounts'].get('Payment', 0.0)
                     else:
                         amt = data['line_amounts'].get(col, 0.0)
                     worksheet.write_number(row_num, 5 + i, amt, num_cell_format)
