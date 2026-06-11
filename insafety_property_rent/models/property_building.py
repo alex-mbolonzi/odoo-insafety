@@ -632,6 +632,11 @@ class Property(models.Model):
                     else:
                         amt = data['line_amounts'].get(col, 0.0)
                     worksheet.write_number(row_num, 5 + i, amt, num_cell_format)
+                    # Do not sum Opening Bal; exclude negatives for Total Due and Balance
+                    if col == 'Opening Bal':
+                        continue
+                    if col in ('Total Due', 'Balance') and amt < 0:
+                        continue
                     col_totals[5 + i] += amt
                         
                 row_num += 1
