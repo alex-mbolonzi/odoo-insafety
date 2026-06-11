@@ -389,7 +389,7 @@ class Property(models.Model):
             payment_journals = self.env['account.journal'].search([
                 ('type', '=', 'bank'),
                 ('company_id', '=', rec.company_id.id),
-                ('code', 'in', ['PBNK1','LLDP','BNK2']),
+                ('code', 'in', ['PBNK1','LLDP','PBNK2']),
             ])
 
             # Outstanding receipts account used to identify actual payment lines
