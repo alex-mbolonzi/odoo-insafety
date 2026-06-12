@@ -741,11 +741,11 @@ class Property(models.Model):
                         # Group by Tag for Materials category
                         tag_name = ', '.join(product.product_tag_ids.mapped('name')) if product.product_tag_ids else 'Untagged'
                         ref_key = tag_name
+                        display_name = tag_name
                     else:
                         # Group by internal reference for other categories
                         ref_key = product.default_code or product.name or 'Unknown'
-
-                    display_name = product.name or 'Unknown'
+                        display_name = product.name or 'Unknown'
                     expense_groups.setdefault(categ_name, {})
                     group_key = (ref_key, display_name)
                     expense_groups[categ_name][group_key] = (
@@ -761,7 +761,10 @@ class Property(models.Model):
 
                     categ_total = 0.0
                     for (ref_key, display_name), amount in expense_groups[categ_name].items():
-                        label = f"  {display_name} ({ref_key})"
+                        if ref_key == display_name:
+                            label = f"  {display_name}"
+                        else:
+                            label = f"  {display_name} ({ref_key})"
                         worksheet.write(deduct_row, 3, label, summary_label_fmt)
                         worksheet.write_number(deduct_row, 4, amount, summary_num_fmt)
                         categ_total += amount
