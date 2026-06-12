@@ -668,6 +668,14 @@ class Property(models.Model):
                 'bold': True, 'border': 1, 'align': 'right', 'num_format': currency_format_str,
                 'font_size': 11, 'bg_color': '#D9E1F2',
             })
+            summary_cat_fmt = workbook.add_format({
+                'bold': True, 'border': 1, 'align': 'left', 'font_size': 11,
+                'bg_color': '#E2EFDA', 'underline': True,
+            })
+            summary_cat_num_fmt = workbook.add_format({
+                'bold': True, 'border': 1, 'align': 'right', 'num_format': currency_format_str,
+                'font_size': 11, 'bg_color': '#E2EFDA',
+            })
 
             row_num += 2
             # Section header
@@ -711,26 +719,58 @@ class Property(models.Model):
             worksheet.write_number(deduct_row, 4, commission_amount, summary_num_fmt)
             deduct_row += 1
 
-            # 2. Individual expenses from expense accounts
+            # 2. Expenses grouped by product category and internal reference/tag
             total_expenses = 0.0
             if rec.account_expense_ids:
-                expense_lines = self.env['account.move.line'].read_group(
-                    domain=[
-                        ('account_id', 'in', rec.account_expense_ids.ids),
-                        ('date', '>=', start_date),
-                        ('date', '<=', end_date),
-                        ('move_id.state', '=', 'posted'),
-                        ('company_id', '=', rec.company_id.id),
-                    ],
-                    fields=['balance:sum'],
-                    groupby=['account_id'],
-                )
-                for group in expense_lines:
-                    account_name = group['account_id'][1]
-                    amount = group['balance'] or 0.0
-                    worksheet.write(deduct_row, 3, account_name, summary_label_fmt)
-                    worksheet.write_number(deduct_row, 4, amount, summary_num_fmt)
-                    total_expenses += amount
+                expense_lines = self.env['account.move.line'].search([
+                    ('account_id', 'in', rec.account_expense_ids.ids),
+                    ('date', '>=', start_date),
+                    ('date', '<=', end_date),
+                    ('move_id.state', '=', 'posted'),
+                    ('company_id', '=', rec.company_id.id),
+                    ('product_id', '!=', False),
+                ])
+
+                # Group: {category_name: {(ref_key, name): amount}}
+                expense_groups = {}
+                for line in expense_lines:
+                    product = line.product_id
+                    categ_name = product.categ_id.name if product.categ_id else 'Other'
+
+                    if categ_name == 'Materials':
+                        # Group by Tag for Materials category
+                        tag_name = ', '.join(product.product_tag_ids.mapped('name')) if product.product_tag_ids else 'Untagged'
+                        ref_key = tag_name
+                    else:
+                        # Group by internal reference for other categories
+                        ref_key = product.default_code or product.name or 'Unknown'
+
+                    display_name = product.name or 'Unknown'
+                    expense_groups.setdefault(categ_name, {})
+                    group_key = (ref_key, display_name)
+                    expense_groups[categ_name][group_key] = (
+                        expense_groups[categ_name].get(group_key, 0.0) + line.balance
+                    )
+
+                # Write expenses by category
+                for categ_name in sorted(expense_groups.keys()):
+                    # Category header
+                    worksheet.write(deduct_row, 3, categ_name, summary_cat_fmt)
+                    worksheet.write_number(deduct_row, 4, '', summary_cat_fmt)
+                    deduct_row += 1
+
+                    categ_total = 0.0
+                    for (ref_key, display_name), amount in expense_groups[categ_name].items():
+                        label = f"  {display_name} ({ref_key})"
+                        worksheet.write(deduct_row, 3, label, summary_label_fmt)
+                        worksheet.write_number(deduct_row, 4, amount, summary_num_fmt)
+                        categ_total += amount
+                        deduct_row += 1
+
+                    # Category subtotal
+                    worksheet.write(deduct_row, 3, f"  Subtotal {categ_name}", summary_bold_fmt)
+                    worksheet.write_number(deduct_row, 4, categ_total, summary_bold_num_fmt)
+                    total_expenses += categ_total
                     deduct_row += 1
 
             # Deductions total
