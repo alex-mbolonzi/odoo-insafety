@@ -756,7 +756,7 @@ class Property(models.Model):
                 for categ_name in sorted(expense_groups.keys()):
                     # Category header
                     worksheet.write(deduct_row, 3, categ_name, summary_cat_fmt)
-                    worksheet.write_number(deduct_row, 4, '', summary_cat_fmt)
+                    worksheet.write(deduct_row, 4, '', summary_cat_fmt)
                     deduct_row += 1
 
                     categ_total = 0.0
