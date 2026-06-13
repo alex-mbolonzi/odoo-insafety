@@ -771,6 +771,29 @@ class Property(models.Model):
             worksheet.write_number(deduct_row, 4, commission_amount, summary_num_fmt)
             deduct_row += 1
 
+            # 1b. Payments to Vendor (Landlord) during the current period
+            total_vendor_payments = 0.0
+            if payment_journals and vendor_partner:
+                pay_lines_current = self.env['account.move.line'].search([
+                    ('journal_id', 'in', payment_journals.ids),
+                    ('partner_id', '=', vendor_partner.id),
+                    ('date', '>=', start_date),
+                    ('date', '<=', end_date),
+                    ('move_id.state', '=', 'posted'),
+                    ('company_id', '=', rec.company_id.id),
+                ])
+                for line in pay_lines_current:
+                    amt = line.debit - line.credit
+                    if amt > 0.0:
+                        ref = line.move_id.ref or line.move_id.payment_reference or line.name or ""
+                        ref_str = f" - Ref: {ref}" if ref else ""
+                        date_str = line.date.strftime('%Y-%m-%d') if line.date else ""
+                        title = f"Payment to LL ({date_str}{ref_str})"
+                        worksheet.write(deduct_row, 3, title, summary_label_fmt)
+                        worksheet.write_number(deduct_row, 4, amt, summary_num_fmt)
+                        total_vendor_payments += amt
+                        deduct_row += 1
+
             # 2. Expenses grouped by product category and internal reference/tag
             total_expenses = 0.0
             if rec.account_expense_ids:
@@ -829,7 +852,7 @@ class Property(models.Model):
                     deduct_row += 1
 
             # Deductions total
-            total_deductions = commission_amount + total_expenses
+            total_deductions = commission_amount + total_vendor_payments + total_expenses
             worksheet.write(deduct_row, 3, "Total Deductions", summary_bold_fmt)
             worksheet.write_number(deduct_row, 4, total_deductions, summary_bold_num_fmt)
 
