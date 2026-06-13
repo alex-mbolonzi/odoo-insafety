@@ -677,6 +677,57 @@ class Property(models.Model):
                 'font_size': 11, 'bg_color': '#E2EFDA',
             })
 
+            # Calculate Vendor Opening Balance (Previous Month Balance)
+            vendor_partner = self.env['res.partner'].search([
+                ('name', '=', rec.name),
+            ], limit=1)
+
+            vendor_opening_balance = 0.0
+            if vendor_partner:
+                # 1. OPB net balance
+                vendor_opb_net = 0.0
+                if opb_journal:
+                    opb_lines_vendor = self.env['account.move.line'].search([
+                        ('journal_id', '=', opb_journal.id),
+                        ('partner_id', '=', vendor_partner.id),
+                        ('move_id.state', '=', 'posted'),
+                        ('company_id', '=', rec.company_id.id),
+                    ])
+                    vendor_opb_net = sum(opb_lines_vendor.mapped('credit')) - sum(opb_lines_vendor.mapped('debit'))
+
+                # 2. Prior bills (BILL journal)
+                vendor_journal = self.env['account.journal'].search([
+                    ('type', '=', 'purchase'),
+                    ('company_id', '=', rec.company_id.id),
+                    ('code', '=', 'BILL'),
+                ], limit=1)
+
+                prior_bills_vendor = 0.0
+                if vendor_journal:
+                    prior_bills_lines = self.env['account.move.line'].search([
+                        ('journal_id', '=', vendor_journal.id),
+                        ('partner_id', '=', vendor_partner.id),
+                        ('date', '<', start_date),
+                        ('move_id.state', '=', 'posted'),
+                        ('account_id.account_type', '=', 'liability_payable'),
+                        ('company_id', '=', rec.company_id.id),
+                    ])
+                    prior_bills_vendor = sum(prior_bills_lines.mapped('credit')) - sum(prior_bills_lines.mapped('debit'))
+
+                # 3. Prior payments (Bank journals)
+                prior_payments_vendor = 0.0
+                if payment_journals:
+                    prior_payment_lines = self.env['account.move.line'].search([
+                        ('journal_id', 'in', payment_journals.ids),
+                        ('partner_id', '=', vendor_partner.id),
+                        ('date', '<', start_date),
+                        ('move_id.state', '=', 'posted'),
+                        ('company_id', '=', rec.company_id.id),
+                    ])
+                    prior_payments_vendor = sum(prior_payment_lines.mapped('debit')) - sum(prior_payment_lines.mapped('credit'))
+
+                vendor_opening_balance = vendor_opb_net + prior_bills_vendor - prior_payments_vendor
+
             row_num += 2
             # Section header
             worksheet.merge_range(row_num, 0, row_num, 1, "INCOME", summary_header_fmt)
@@ -685,6 +736,7 @@ class Property(models.Model):
 
             # INCOME rows
             income_rows = [
+                ('Previous Month Balance', vendor_opening_balance),
                 ('Rent', col_totals.get(4, 0.0)),
                 ('House Deposit', col_totals.get(5, 0.0)),
                 ('Water Deposit', col_totals.get(6, 0.0)),
