@@ -516,7 +516,7 @@ class Property(models.Model):
 
                                 import logging
                                 _logger = logging.getLogger(__name__)
-                                _logger.info(
+                                _logger.debug(
                                     "Opening Bal tenant=%s: invoices=%d, invoiced=%.2f, paid=%.2f, opb_net=%.2f, balance=%.2f, period_start=%s",
                                     contract.tenant_id.name, invoice_count, total_invoiced, prior_payments,
                                     opb_net, opening_balance, start_date
