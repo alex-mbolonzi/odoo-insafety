@@ -481,13 +481,13 @@ class Property(models.Model):
                                         ('journal_id', 'in', payment_journals.ids),
                                         ('partner_id', '=', contract.tenant_id.id),
                                         ('account_id', '=', outstanding_receipts_account.id),
-                                        ('date', '<=', start_date),
+                                        ('date', '<', start_date),
                                         ('move_id.state', '=', 'posted'),
                                         ('debit', '>', 0),
                                         ('company_id', '=', rec.company_id.id),
                                     ])
                                     filtered_prior_pay = prior_pay_lines.filtered(
-                                        lambda l: l.date and l.date <= start_date
+                                        lambda l: l.date and l.date < start_date
                                     )
                                     prior_payments = sum(filtered_prior_pay.mapped('debit'))
 
