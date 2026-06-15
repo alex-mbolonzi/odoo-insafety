@@ -456,12 +456,9 @@ class Property(models.Model):
 
                             # Opening balance calculation (skip for zero-rent contracts)
                             if contract.monthly_rent != 0:
-                                # Only consider entries from this contract's start date onwards
-                                c_start = contract.rent_date_from
                                 prior_invoiced = self.env['account.move.line'].search([
                                     ('journal_id', 'in', invoice_journals.ids),
                                     ('partner_id', '=', contract.tenant_id.id),
-                                    ('date', '>=', c_start),
                                     ('date', '<', start_date),
                                     ('move_id.state', '=', 'posted'),
                                     ('company_id', '=', rec.company_id.id),
@@ -470,7 +467,7 @@ class Property(models.Model):
                                 opening_balance_keywords = ['Monthly Rent', 'HSE_DPO', 'WTR_DPO', 'ELEC_DPO', 'WATER_SRV_TENANT', 'GRB_SRV']
                                 total_invoiced = 0.0
                                 for pl in prior_invoiced:
-                                    if not pl.date or pl.date >= start_date or pl.date < c_start:
+                                    if not pl.date or pl.date >= start_date:
                                         continue
                                     if not pl.name or pl.display_type in ('line_section', 'line_note', 'tax', 'payment_term'):
                                         continue
@@ -484,13 +481,13 @@ class Property(models.Model):
                                         ('journal_id', 'in', payment_journals.ids),
                                         ('partner_id', '=', contract.tenant_id.id),
                                         ('account_id', '=', outstanding_receipts_account.id),
-                                        ('date', '<', start_date),
+                                        ('date', '<=', end_date),
                                         ('move_id.state', '=', 'posted'),
                                         ('debit', '>', 0),
                                         ('company_id', '=', rec.company_id.id),
                                     ])
                                     filtered_prior_pay = prior_pay_lines.filtered(
-                                        lambda l: l.date and l.date < start_date
+                                        lambda l: l.date and l.date <= end_date
                                     )
                                     prior_payments = sum(filtered_prior_pay.mapped('debit'))
 
