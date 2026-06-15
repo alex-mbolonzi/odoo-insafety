@@ -511,11 +511,14 @@ class Property(models.Model):
                                                      sum(opb_lines.mapped('debit')),
                                                      sum(opb_lines.mapped('credit')), opb_net)
 
+                                # Count distinct invoices for this tenant before the period
+                                invoice_count = len(prior_invoiced.mapped('move_id'))
+
                                 import logging
                                 _logger = logging.getLogger(__name__)
                                 _logger.info(
-                                    "Opening Bal tenant=%s: invoiced=%.2f, paid=%.2f, opb_net=%.2f, balance=%.2f, period_start=%s",
-                                    contract.tenant_id.name, total_invoiced, prior_payments,
+                                    "Opening Bal tenant=%s: invoices=%d, invoiced=%.2f, paid=%.2f, opb_net=%.2f, balance=%.2f, period_start=%s",
+                                    contract.tenant_id.name, invoice_count, total_invoiced, prior_payments,
                                     opb_net, opening_balance, start_date
                                 )
 
