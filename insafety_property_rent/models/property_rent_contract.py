@@ -172,8 +172,7 @@ class PropertyRentContract(models.Model):
                 target_date = datetime.strptime(target_date, '%Y-%m-%d').date()
             iDay = target_date
         else:
-            iDay = datetime.today() + timedelta(days=31)
-            iDay = iDay.date() if isinstance(iDay, datetime) else iDay
+            iDay = datetime.today().date()
 
         rec = self.env['insafety.property.rent.log'].search([
             ('year','=', iDay.year),
@@ -223,9 +222,7 @@ class PropertyRentContract(models.Model):
                 target_date = datetime.strptime(target_date, '%Y-%m-%d').date()
             invoice_date = target_date.replace(day=1)
         else:
-            iDay = datetime.today() + timedelta(days=31)
-            invoice_date = iDay.replace(day=1) if hasattr(iDay, 'replace') else iDay
-            invoice_date = invoice_date.date() if isinstance(invoice_date, datetime) else invoice_date
+            invoice_date = datetime.today().date().replace(day=1)
 
         # Validate required configuration before creating invoice
         journal = self.env['account.journal'].search([
